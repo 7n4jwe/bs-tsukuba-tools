@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="ボーイスカウトつくば第1団 ツール集 - 方角ナビ・地形図印刷ツール">
+<title>ツール集 | ボーイスカウトつくば第1団</title>
+<style>
+  :root {
+    --scout-green: #00664B;
+    --scout-green-dark: #004F39;
+    --scout-yellow: #FFBA20;
+    --scout-red: #C22047;
+    --scout-navy: #064583;
+    --scout-sky: #74B2E0;
+
+    --bg: #F2F2F7;
+    --card-bg: #FFFFFF;
+    --label-primary: #000000;
+    --label-secondary: rgba(60, 60, 67, 0.6);
+    --separator: rgba(60, 60, 67, 0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--label-primary);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  header {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--separator);
+    padding: 16px 24px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.022em;
+    padding-left: 12px;
+    border-left: 3px solid var(--scout-green);
+    line-height: 1.2;
+  }
+  header .subtitle {
+    font-size: 12px;
+    color: var(--label-secondary);
+    padding-left: 12px;
+    margin-top: 2px;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 20px 64px;
+  }
+  .page-title {
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .page-desc {
+    font-size: 15px;
+    color: var(--label-secondary);
+    margin-bottom: 32px;
+  }
+  .tool-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media (min-width: 600px) {
+    .tool-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .tool-card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 24px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--separator);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .tool-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  }
+  .tool-card:active { transform: translateY(0); }
+  .tool-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #fff;
+  }
+  .icon-direction { background: var(--scout-red); }
+  .icon-hiking    { background: var(--scout-green); }
+  .tool-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .tool-desc {
+    font-size: 14px;
+    color: var(--label-secondary);
+    line-height: 1.5;
+  }
+  .tool-link {
+    margin-top: auto;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--scout-green);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  footer {
+    text-align: center;
+    padding: 24px 20px;
+    font-size: 12px;
+    color: var(--label-secondary);
+    border-top: 1px solid var(--separator);
+    margin-top: 32px;
+  }
+  footer a { color: var(--scout-green); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ボーイスカウトつくば第1団</h1>
+  <div class="subtitle">Tools / ツール集</div>
+</header>
+<main>
+  <h2 class="page-title">ツール集</h2>
+  <p class="page-desc">スカウト活動で使える便利なツールをまとめています。スマートフォン・PCどちらでも使えます。</p>
+
+  <div class="tool-grid">
+    <a class="tool-card" href="/direction/">
+      <div class="tool-icon icon-direction">N</div>
+      <div class="tool-title">方角ナビ</div>
+      <div class="tool-desc">現在地から目的地への方角と距離を表示するコンパスツール。ハイキング・オリエンテーリングに。</div>
+      <span class="tool-link">開く →</span>
+    </a>
+
+    <a class="tool-card" href="/hiking-map/">
+      <div class="tool-icon icon-hiking">M</div>
+      <div class="tool-title">地形図印刷ツール</div>
+      <div class="tool-desc">国土地理院の地形図を範囲指定して印刷用に出力。ハイキング計画・実地踏査に。</div>
+      <span class="tool-link">開く →</span>
+    </a>
+  </div>
+</main>
+<footer>
+  &copy; ボーイスカウトつくば第1団 / <a href="https://bs-tsukuba.org">bs-tsukuba.org</a>
+</footer>
+</body>
+</html>
