@@ -548,11 +548,18 @@ function initMap() {
     { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#74B2E0" }] }
   ];
 
+  // デバイスのカラースキームに連動(ライト=デフォルト、ダーク=darkStyle)
+  const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
   map = new google.maps.Map(document.getElementById('map'), {
     center: initialPos, zoom: 14,
     mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
     zoomControl: true, gestureHandling: 'greedy',
-    styles: darkStyle
+    styles: darkModeQuery.matches ? darkStyle : []
+  });
+
+  // デバイス設定の変更にリアルタイム追従
+  darkModeQuery.addEventListener('change', (e) => {
+    map.setOptions({ styles: e.matches ? darkStyle : [] });
   });
 
   map.addListener('click', (e) => {
