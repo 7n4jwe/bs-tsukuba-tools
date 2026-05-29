@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>方角ナビ</title>
+<style>
+  /* ===== SAJブランドカラー ===== */
+  :root {
+    --saj-green: #00664B;       /* 深緑(基本色・成功色) */
+    --saj-green-bright: #00A86B; /* 明緑(成功表示用) */
+    --saj-red: #C22047;          /* 紅色(VS部門・アクセント) */
+    --saj-red-dark: #9A1939;     /* 紅色(プレス時) */
+    --saj-yellow: #FFBA20;       /* 向日葵色(BS部門) */
+    --saj-blue: #064583;         /* 紺青(CS部門) */
+    --saj-skyblue: #74B2E0;      /* 空色(BVS部門) */
+
+    /* iOS HIGダークカラー */
+    --bg-base: #000000;
+    --bg-elevated: #1C1C1E;
+    --bg-secondary: #2C2C2E;
+    --bg-tertiary: #3A3A3C;
+    --separator: rgba(84, 84, 88, 0.6);
+    --label-primary: #FFFFFF;
+    --label-secondary: #EBEBF5;
+    --label-tertiary: rgba(235, 235, 245, 0.6);
+    --label-quaternary: rgba(235, 235, 245, 0.3);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg-base); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", sans-serif;
+    color: var(--label-primary);
+    min-height: 100vh;
+    padding: max(env(safe-area-inset-top), 12px) 16px max(env(safe-area-inset-bottom), 24px);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.4;
+  }
+  .container { max-width: 480px; margin: 0 auto; }
+
+  /* ===== ヘッダー(iOS large title風) ===== */
+  .title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 8px 0 16px;
+  }
+  .title-mark { color: var(--saj-red); margin-right: 6px; }
+
+  /* ===== カードセクション ===== */
+  .section {
+    background: var(--bg-elevated);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .section-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--label-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+  }
+
+  /* ===== マップ ===== */
+  #map {
+    width: 100%;
+    height: 300px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    background: var(--bg-secondary);
+  }
+
+  /* ===== 検索 ===== */
+  #searchInput {
+    width: 100%;
+    background: var(--bg-secondary);
+    border: none;
+    color: var(--label-primary);
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 16px; /* iOS自動ズーム防止 */
+    font-family: inherit;
+    margin-bottom: 12px;
+    -webkit-appearance: none;
+  }
+  #searchInput::placeholder { color: var(--label-tertiary); }
+  #searchInput:focus { outline: 2px solid var(--saj-red); outline-offset: -2px; }
+
+  /* ===== 座標表示 ===== */
+  .coords {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  .coords-label { color: var(--label-tertiary); }
+  .coords-value {
+    color: var(--label-primary);
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 13px;
+  }
+
+  /* ===== ボタン(iOS HIG準拠) ===== */
+  .btn {
+    display: block;
+    width: 100%;
+    background: var(--saj-red);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    min-height: 50px;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .btn:active { background: var(--saj-red-dark); transform: scale(0.98); }
+  .btn:disabled {
+    background: var(--bg-tertiary);
+    color: var(--label-tertiary);
+    cursor: not-allowed;
+  }
+
+  /* ===== ステータス ===== */
+  .status {
+    text-align: center;
+    padding: 12px;
+    font-size: 14px;
+    color: var(--label-tertiary);
+    margin-bottom: 16px;
+  }
+  .status.error { color: var(--saj-red); }
+  .hidden { display: none !important; }
+
+  /* ===== コンパスセクション ===== */
+  .compass-section {
+    background: var(--bg-elevated);
+    border-radius: 14px;
+    padding: 24px 16px;
+    margin-bottom: 16px;
+    text-align: center;
+    transition: background 0.4s ease;
+  }
+  .compass-section.on-target {
+    background: var(--saj-green);
+  }
+
+  .direction-text {
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 8px 0 4px;
+    color: var(--saj-red);
+    transition: color 0.4s ease;
+  }
+  .compass-section.on-target .direction-text {
+    color: white;
+  }
+
+  .distance-text {
+    font-size: 15px;
+    color: var(--label-tertiary);
+    margin-bottom: 20px;
+    transition: color 0.4s ease;
+  }
+  .compass-section.on-target .distance-text {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  /* ===== コンパス本体 ===== */
+  .compass {
+    width: 280px;
+    height: 280px;
+    margin: 0 auto;
+    position: relative;
+  }
+  /* 上向きインジケータ(常に画面の真上を示す目印) */
+  .top-indicator {
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 12px solid var(--label-primary);
+    z-index: 10;
+    transition: border-top-color 0.4s ease;
+  }
+  .compass-section.on-target .top-indicator {
+    border-top-color: white;
+  }
+
+  .compass-ring {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--bg-base);
+    border: 2px solid var(--separator);
+    position: relative;
+    transition: transform 0.2s linear, border-color 0.4s ease, background 0.4s ease;
+  }
+  .compass-section.on-target .compass-ring {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  .compass-mark {
+    position: absolute;
+    color: var(--label-tertiary);
+    font-size: 14px;
+    font-weight: 600;
+    transform: translate(-50%, -50%);
+    transition: color 0.4s ease;
+  }
+  .compass-section.on-target .compass-mark {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  .compass-mark.cardinal { color: var(--label-primary); font-size: 20px; }
+  .compass-section.on-target .compass-mark.cardinal { color: white; }
+  .compass-mark.north { color: var(--saj-red); }
+  .compass-section.on-target .compass-mark.north { color: white; }
+
+  .arrow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    transform-origin: 50% 50%;
+    transition: transform 0.2s linear;
+    z-index: 5;
+  }
+  .arrow svg {
+    position: absolute;
+    top: -95px;
+    left: -32px;
+    width: 64px;
+    height: 110px;
+    overflow: visible;
+  }
+  .arrow-fill { fill: var(--saj-red); transition: fill 0.4s ease; }
+  .compass-section.on-target .arrow-fill { fill: white; }
+
+  /* ===== 情報リスト(iOS設定アプリ風) ===== */
+  .info {
+    background: var(--bg-elevated);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--separator);
+    font-size: 15px;
+    min-height: 44px;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .label { color: var(--label-primary); }
+  .info-row .value {
+    color: var(--label-tertiary);
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 14px;
+  }
+
+  /* ===== 戻るリンク ===== */
+  .text-button {
+    display: block;
+    width: 100%;
+    text-align: center;
+    color: var(--saj-red);
+    background: none;
+    border: none;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .text-button:active { opacity: 0.6; }
+
+  /* ===== Google Places Autocomplete styling ===== */
+  .pac-container {
+    background: var(--bg-secondary);
+    border: none;
+    border-radius: 10px;
+    margin-top: 4px;
+    font-family: inherit;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  }
+  .pac-item {
+    color: var(--label-primary);
+    border-top: 0.5px solid var(--separator);
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .pac-item:hover, .pac-item-selected { background: var(--bg-tertiary); }
+  .pac-item:first-child { border-top: none; }
+  .pac-item-query { color: var(--label-primary); font-size: 14px; }
+  .pac-matched { color: var(--saj-red); font-weight: 600; }
+  .pac-icon { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1 class="title"><span class="title-mark">●</span>方角ナビ</h1>
+
+  <section id="targetPanel" class="section">
+    <div class="section-label">目的地</div>
+
+    <input type="text" id="searchInput" placeholder="地名・住所で検索">
+
+    <div id="map"></div>
+
+    <div class="coords">
+      <span class="coords-label">座標</span>
+      <span class="coords-value" id="coordsDisplay">未選択</span>
+    </div>
+
+    <button class="btn" id="confirmTargetBtn" disabled>ここを目的地にする</button>
+  </section>
+
+  <div id="statusMsg" class="status hidden"></div>
+
+  <section id="navigation" class="hidden">
+    <div class="compass-section" id="compassSection">
+      <div class="direction-text" id="directionLabel">—</div>
+      <div class="distance-text" id="distanceLabel">距離 —</div>
+
+      <div class="compass">
+        <div class="top-indicator"></div>
+        <div class="compass-ring" id="compassRing">
+          <div class="compass-mark cardinal north" style="top: 8%; left: 50%;">N</div>
+          <div class="compass-mark cardinal" style="top: 50%; right: 8%; transform: translate(50%, -50%);">E</div>
+          <div class="compass-mark cardinal" style="bottom: 8%; left: 50%; transform: translate(-50%, 50%);">S</div>
+          <div class="compass-mark cardinal" style="top: 50%; left: 8%;">W</div>
+        </div>
+        <div class="arrow" id="arrow">
+          <svg viewBox="0 0 64 110">
+            <polygon class="arrow-fill" points="32,0 54,86 32,70 10,86"
+                     stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="info">
+      <div class="info-row">
+        <span class="label">現在地</span>
+        <span class="value" id="currentPos">—</span>
+      </div>
+      <div class="info-row">
+        <span class="label">目的地への方位</span>
+        <span class="value" id="bearingValue">—</span>
+      </div>
+      <div class="info-row">
+        <span class="label">端末の向き</span>
+        <span class="value" id="headingValue">—</span>
+      </div>
+      <div class="info-row">
+        <span class="label">GPS精度</span>
+        <span class="value" id="accuracyValue">—</span>
+      </div>
+    </div>
+
+    <button class="text-button" id="changeTargetBtn">目的地を変更</button>
+  </section>
+</div>
+
+<script>
+// ========== 状態 ==========
+let targetLat = null, targetLng = null;
+let currentLat = null, currentLng = null;
+let currentHeading = 0;
+let bearingToTarget = 0;
+let map = null, marker = null, autocomplete = null;
+let watchId = null;
+let isOnTarget = false;
+
+// 回転累積角
+let arrowRotation = 0, ringRotation = 0;
+
+const DIRECTIONS_16 = [
+  '北', '北北東', '北東', '東北東',
+  '東', '東南東', '南東', '南南東',
+  '南', '南南西', '南西', '西南西',
+  '西', '西北西', '北西', '北北西'
+];
+
+// ========== 計算ヘルパ ==========
+function to16Direction(deg) {
+  const n = ((deg % 360) + 360) % 360;
+  return DIRECTIONS_16[Math.round(n / 22.5) % 16];
+}
+function calculateBearing(lat1, lng1, lat2, lng2) {
+  const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+  const Δλ = (lng2 - lng1) * Math.PI / 180;
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+function calculateDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(Δφ/2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function formatDistance(m) {
+  if (m < 1000) return `${Math.round(m)} m`;
+  return `${(m/1000).toFixed(2)} km`;
+}
+function shortestRotation(current, target) {
+  let diff = target - (((current % 360) + 360) % 360);
+  if (diff > 180) diff -= 360;
+  else if (diff < -180) diff += 360;
+  return current + diff;
+}
+
+// ========== UI ==========
+function showStatus(msg, type) {
+  const el = document.getElementById('statusMsg');
+  if (!msg) {
+    el.classList.add('hidden');
+    return;
+  }
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
+}
+
+function setTarget(lat, lng, pan = true) {
+  targetLat = lat;
+  targetLng = lng;
+  if (marker) {
+    marker.setPosition({ lat, lng });
+  } else {
+    marker = new google.maps.Marker({
+      position: { lat, lng }, map: map, draggable: true,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10, fillColor: '#C22047', fillOpacity: 1,
+        strokeColor: '#fff', strokeWeight: 2
+      }
+    });
+    marker.addListener('dragend', (e) => {
+      targetLat = e.latLng.lat();
+      targetLng = e.latLng.lng();
+      updateCoordsDisplay();
+    });
+  }
+  if (pan) map.panTo({ lat, lng });
+  updateCoordsDisplay();
+}
+
+function updateCoordsDisplay() {
+  const btn = document.getElementById('confirmTargetBtn');
+  if (targetLat !== null) {
+    document.getElementById('coordsDisplay').textContent =
+      `${targetLat.toFixed(5)}, ${targetLng.toFixed(5)}`;
+    btn.disabled = false;
+  } else {
+    document.getElementById('coordsDisplay').textContent = '未選択';
+    btn.disabled = true;
+  }
+}
+
+// ========== Google Maps ==========
+function initMap() {
+  const initialPos = { lat: 35.9499, lng: 139.9750 };
+
+  // iOSダークモード風スタイル
+  const darkStyle = [
+    { elementType: "geometry", stylers: [{ color: "#1c1c1e" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#1c1c1e" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#8e8e93" }] },
+    { featureType: "administrative", elementType: "geometry.stroke", stylers: [{ color: "#3a3a3c" }] },
+    { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#003d2c" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#2c2c2e" }] },
+    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#b0b0b0" }] },
+    { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#3a3a3c" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#48484a" }] },
+    { featureType: "transit", elementType: "labels.text.fill", stylers: [{ color: "#74B2E0" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#064583" }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#74B2E0" }] }
+  ];
+
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: initialPos, zoom: 14,
+    mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+    zoomControl: true, gestureHandling: 'greedy',
+    styles: darkStyle
+  });
+
+  map.addListener('click', (e) => {
+    setTarget(e.latLng.lat(), e.latLng.lng(), false);
+  });
+
+  const input = document.getElementById('searchInput');
+  autocomplete = new google.maps.places.Autocomplete(input, {
+    fields: ['geometry', 'name', 'formatted_address'],
+    componentRestrictions: { country: 'jp' }
+  });
+  autocomplete.bindTo('bounds', map);
+  autocomplete.addListener('place_changed', () => {
+    const place = autocomplete.getPlace();
+    if (!place.geometry || !place.geometry.location) return;
+    const lat = place.geometry.location.lat();
+    const lng = place.geometry.location.lng();
+    setTarget(lat, lng);
+    map.setZoom(16);
+  });
+}
+
+// ========== 目的地確定 → ナビ開始(統合) ==========
+document.getElementById('confirmTargetBtn').addEventListener('click', async () => {
+  if (targetLat === null) return;
+
+  // ナビセクションを表示
+  document.getElementById('navigation').classList.remove('hidden');
+
+  // コンパス許可(iOS)
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const res = await DeviceOrientationEvent.requestPermission();
+      if (res !== 'granted') {
+        showStatus('コンパスの許可が得られませんでした', 'error');
+        return;
+      }
+    } catch (e) {
+      showStatus('許可リクエスト失敗: ' + e.message, 'error');
+      return;
+    }
+  }
+
+  window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+  window.addEventListener('deviceorientation', handleOrientation, true);
+
+  if (!navigator.geolocation) {
+    showStatus('位置情報が使えません', 'error');
+    return;
+  }
+
+  if (watchId === null) {
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        currentLat = pos.coords.latitude;
+        currentLng = pos.coords.longitude;
+        document.getElementById('accuracyValue').textContent = `${pos.coords.accuracy.toFixed(0)} m`;
+        showStatus(null);
+        updateDisplay();
+      },
+      (err) => showStatus('位置情報エラー: ' + err.message, 'error'),
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+    );
+  }
+
+  // 下にスムーススクロール
+  requestAnimationFrame(() => {
+    document.getElementById('navigation').scrollIntoView({
+      behavior: 'smooth', block: 'start'
+    });
+  });
+});
+
+// 目的地変更 → 上にスクロール、ナビ非表示
+document.getElementById('changeTargetBtn').addEventListener('click', () => {
+  document.getElementById('navigation').classList.add('hidden');
+  document.getElementById('targetPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+  window.removeEventListener('deviceorientation', handleOrientation, true);
+});
+
+// ========== ナビ更新 ==========
+function updateDisplay() {
+  if (currentLat === null || targetLat === null) return;
+
+  bearingToTarget = calculateBearing(currentLat, currentLng, targetLat, targetLng);
+  const distance = calculateDistance(currentLat, currentLng, targetLat, targetLng);
+
+  // 矢印 = 目的地方位 - 端末向き(画面の真上が0)
+  const arrowTarget = ((bearingToTarget - currentHeading) % 360 + 360) % 360;
+  arrowRotation = shortestRotation(arrowRotation, arrowTarget);
+  document.getElementById('arrow').style.transform = `rotate(${arrowRotation}deg)`;
+
+  // リング = -端末向き
+  const ringTarget = ((-currentHeading) % 360 + 360) % 360;
+  ringRotation = shortestRotation(ringRotation, ringTarget);
+  document.getElementById('compassRing').style.transform = `rotate(${ringRotation}deg)`;
+
+  // ±5度判定: arrowRotationを正規化して0付近かチェック
+  const normalizedArrow = ((arrowRotation % 360) + 360) % 360;
+  const newOnTarget = normalizedArrow <= 5 || normalizedArrow >= 355;
+  if (newOnTarget !== isOnTarget) {
+    isOnTarget = newOnTarget;
+    document.getElementById('compassSection').classList.toggle('on-target', isOnTarget);
+  }
+
+  document.getElementById('directionLabel').textContent = to16Direction(bearingToTarget);
+  document.getElementById('distanceLabel').textContent = `距離 ${formatDistance(distance)}`;
+  document.getElementById('currentPos').textContent =
+    `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
+  document.getElementById('bearingValue').textContent = `${bearingToTarget.toFixed(1)}°`;
+  document.getElementById('headingValue').textContent = `${currentHeading.toFixed(1)}°`;
+}
+
+function handleOrientation(event) {
+  let heading = null;
+  if (typeof event.webkitCompassHeading === 'number') {
+    heading = event.webkitCompassHeading;
+  } else if (typeof event.alpha === 'number') {
+    heading = (360 - event.alpha) % 360;
+  }
+  if (heading !== null && !isNaN(heading)) {
+    currentHeading = heading;
+    updateDisplay();
+  }
+}
+</script>
+
+<script async defer
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDaBeljApVdsOH3OOlygwtSmxU8LF0foAQ&libraries=places&language=ja&region=JP&callback=initMap">
+</script>
+</body>
+</html>
