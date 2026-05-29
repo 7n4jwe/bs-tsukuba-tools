@@ -76,6 +76,9 @@
   @media (min-width: 600px) {
     .tool-grid { grid-template-columns: 1fr 1fr; }
   }
+  @media (min-width: 900px) {
+    .tool-grid { grid-template-columns: repeat(3, 1fr); }
+  }
   .tool-card {
     background: var(--card-bg);
     border-radius: 14px;
@@ -106,6 +109,7 @@
   }
   .icon-direction { background: var(--scout-red); }
   .icon-hiking    { background: var(--scout-green); }
+  .icon-bvs       { background: var(--scout-yellow); color: #5a3a00; }
   .tool-title {
     font-size: 20px;
     font-weight: 700;
@@ -158,6 +162,13 @@
       <div class="tool-icon icon-hiking">M</div>
       <div class="tool-title">地形図印刷ツール</div>
       <div class="tool-desc">国土地理院の地形図を範囲指定して印刷用に出力。ハイキング計画・実地踏査に。</div>
+      <span class="tool-link">開く →</span>
+    </a>
+
+    <a class="tool-card" href="/bvs-activities/">
+      <div class="tool-icon icon-bvs">B</div>
+      <div class="tool-title">ビーバー隊活動管理</div>
+      <div class="tool-desc">出欠・活動計画の管理ツール。隊員名簿、活動記録、ロースター管理。</div>
       <span class="tool-link">開く →</span>
     </a>
   </div>
