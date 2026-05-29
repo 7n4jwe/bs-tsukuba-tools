@@ -1610,21 +1610,24 @@ function drawAxisLabels(ctx, x, y, w, h, cellsX, cellsY, color) {
 
   const stepPx = mmToPx(20);
   const labelOffset = mmToPx(2);
+  const xLabelY = y + h + labelOffset + fontSize / 2;
 
-  // X軸：下端のみ。セル中央。
+  // 左下隅にX/Y共通の "00"
+  ctx.textAlign = 'right';
+  ctx.fillText('00', x - labelOffset, xLabelY);
+
+  // X軸：縦グリッド線の真下に 01,02,…（左端は00で兼ねるためスキップ）
   ctx.textAlign = 'center';
-  for (let i = 0; i < cellsX; i++) {
-    const cx = x + i * stepPx + stepPx / 2;
-    const label = String(i).padStart(2, '0');
-    ctx.fillText(label, cx, y + h + labelOffset + fontSize / 2);
+  for (let i = 1; i <= cellsX; i++) {
+    const cx = x + i * stepPx;
+    ctx.fillText(String(i).padStart(2, '0'), cx, xLabelY);
   }
 
-  // Y軸：左端のみ。左下を00として上に向かって増加。セル中央。
+  // Y軸：横グリッド線の左余白に 01,02,…（下端の00はスキップ）
   ctx.textAlign = 'right';
-  for (let j = 0; j < cellsY; j++) {
-    const cy = y + h - j * stepPx - stepPx / 2;
-    const label = String(j).padStart(2, '0');
-    ctx.fillText(label, x - labelOffset, cy);
+  for (let j = 1; j <= cellsY; j++) {
+    const cy = y + h - j * stepPx;
+    ctx.fillText(String(j).padStart(2, '0'), x - labelOffset, cy);
   }
 
   ctx.restore();
