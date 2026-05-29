@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>方角ナビ | ボーイスカウトつくば第1団</title>
+<script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.min.js"></script>
 <style>
   /* ===== SAJブランドカラー(ライトテーマ・hiking-mapと統一) ===== */
   :root {
@@ -125,6 +126,34 @@
   }
   #searchInput::placeholder { color: var(--label-tertiary); }
   #searchInput:focus { outline: 2px solid var(--saj-red); outline-offset: -2px; }
+
+  /* ===== プリセット ===== */
+  .presets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .preset-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--separator);
+    color: var(--label-primary);
+    padding: 10px 8px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 42px;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .preset-btn:active { background: var(--bg-tertiary); transform: scale(0.97); }
+  .preset-btn .icon { font-size: 16px; line-height: 1; }
+  .preset-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
   /* ===== 座標表示 ===== */
   .coords {
@@ -372,6 +401,13 @@
 
     <input type="text" id="searchInput" placeholder="地名・住所で検索">
 
+    <div class="presets" id="presets">
+      <button type="button" class="preset-btn" data-preset="mecca"><span class="icon">🕋</span>メッカ</button>
+      <button type="button" class="preset-btn" data-preset="skytree"><span class="icon">🗼</span>東京スカイツリー</button>
+      <button type="button" class="preset-btn" data-preset="sunrise"><span class="icon">🌅</span>次の日の出</button>
+      <button type="button" class="preset-btn" data-preset="sunset"><span class="icon">🌇</span>次の日没</button>
+    </div>
+
     <div id="map"></div>
 
     <div class="coords">
@@ -515,6 +551,69 @@ function setTarget(lat, lng, pan = true) {
   updateCoordsDisplay();
 }
 
+// ========== プリセット ==========
+const PRESETS = {
+  mecca:   { lat: 21.4225,  lng: 39.8262,  label: 'メッカ' },
+  skytree: { lat: 35.7100,  lng: 139.8107, label: '東京スカイツリー' }
+};
+
+// 方位角(度・北基準)と距離(km)から目的地座標を計算
+function destinationPoint(lat, lng, bearingDeg, distanceKm) {
+  const R = 6371;
+  const f1 = lat * Math.PI / 180;
+  const l1 = lng * Math.PI / 180;
+  const th = bearingDeg * Math.PI / 180;
+  const d = distanceKm / R;
+  const f2 = Math.asin(Math.sin(f1) * Math.cos(d) + Math.cos(f1) * Math.sin(d) * Math.cos(th));
+  const l2 = l1 + Math.atan2(
+    Math.sin(th) * Math.sin(d) * Math.cos(f1),
+    Math.cos(d) - Math.sin(f1) * Math.sin(f2)
+  );
+  return { lat: f2 * 180 / Math.PI, lng: ((l2 * 180 / Math.PI + 540) % 360) - 180 };
+}
+
+// 次の日の出/日没の時刻と方位角を計算
+function getNextSunEvent(type, lat, lng) {
+  if (typeof SunCalc === 'undefined') return null;
+  const now = new Date();
+  let times = SunCalc.getTimes(now, lat, lng);
+  let target = times[type];
+  if (!target || isNaN(target) || target < now) {
+    times = SunCalc.getTimes(new Date(now.getTime() + 86400000), lat, lng);
+    target = times[type];
+  }
+  if (!target || isNaN(target)) return null;
+  const pos = SunCalc.getPosition(target, lat, lng);
+  // SunCalc azimuth: 南=0, 西方向が正 → 北基準(時計回り)に変換
+  const bearing = ((pos.azimuth * 180 / Math.PI + 180) % 360 + 360) % 360;
+  return { time: target, bearing };
+}
+
+function setupPresets() {
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const preset = btn.dataset.preset;
+      if (PRESETS[preset]) {
+        const p = PRESETS[preset];
+        setTarget(p.lat, p.lng);
+        showStatus(`${p.label} を目的地にしました`, '');
+      } else if (preset === 'sunrise' || preset === 'sunset') {
+        if (currentLat === null) {
+          showStatus('現在地が必要です。位置情報を許可してください', 'error');
+          return;
+        }
+        const ev = getNextSunEvent(preset, currentLat, currentLng);
+        if (!ev) { showStatus('日の出/日没を計算できません', 'error'); return; }
+        const dest = destinationPoint(currentLat, currentLng, ev.bearing, 1000);
+        setTarget(dest.lat, dest.lng);
+        const label = preset === 'sunrise' ? '次の日の出' : '次の日没';
+        const timeStr = ev.time.toLocaleString('ja-JP', { hour: '2-digit', minute: '2-digit', month: 'numeric', day: 'numeric' });
+        showStatus(`${label}(${timeStr}, 方位${Math.round(ev.bearing)}°)を目的地にしました`, '');
+      }
+    });
+  });
+}
+
 function updateCoordsDisplay() {
   const btn = document.getElementById('confirmTargetBtn');
   if (targetLat !== null) {
@@ -580,6 +679,9 @@ function initMap() {
     setTarget(lat, lng);
     map.setZoom(16);
   });
+
+  // プリセットボタン初期化
+  setupPresets();
 }
 
 // ========== 目的地確定 → ナビ開始(統合) ==========
