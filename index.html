@@ -53,7 +53,7 @@
     margin-top: 2px;
   }
   main {
-    max-width: 720px;
+    max-width: 960px;
     margin: 0 auto;
     padding: 32px 20px 64px;
   }
@@ -82,7 +82,7 @@
   .tool-card {
     background: var(--card-bg);
     border-radius: 14px;
-    padding: 24px;
+    padding: 20px;
     text-decoration: none;
     color: inherit;
     display: flex;
@@ -111,10 +111,22 @@
   .icon-hiking    { background: var(--scout-green); }
   .icon-bvs       { background: var(--scout-yellow); color: #5a3a00; }
   .tool-title {
-    font-size: 20px;
+    font-size: 19px;
     font-weight: 700;
     letter-spacing: -0.01em;
+    white-space: nowrap;
   }
+  .tool-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--scout-yellow);
+    color: #5a3a00;
+    margin-top: 2px;
+  }
+  .tool-badge.scout-only { background: var(--scout-navy); color: #fff; }
   .tool-desc {
     font-size: 14px;
     color: var(--label-secondary);
@@ -148,12 +160,13 @@
 </header>
 <main>
   <h2 class="page-title">ツール集</h2>
-  <p class="page-desc">スカウト活動で使える便利なツールをまとめています。スマートフォン・PCどちらでも使えます。</p>
+  <p class="page-desc">スカウト活動で使える便利なツールをまとめています。</p>
 
   <div class="tool-grid">
     <a class="tool-card" href="/direction/">
       <div class="tool-icon icon-direction">N</div>
       <div class="tool-title">方角ナビ</div>
+      <span class="tool-badge">スマートフォン専用</span>
       <div class="tool-desc">現在地から目的地への方角と距離を表示するコンパスツール。ハイキング・オリエンテーリングに。</div>
       <span class="tool-link">開く →</span>
     </a>
@@ -168,6 +181,7 @@
     <a class="tool-card" href="/bvs-activities/">
       <div class="tool-icon icon-bvs">B</div>
       <div class="tool-title">ビーバー隊活動管理</div>
+      <span class="tool-badge scout-only">つくば1団専用</span>
       <div class="tool-desc">出欠・活動計画の管理ツール。隊員名簿、活動記録、ロースター管理。</div>
       <span class="tool-link">開く →</span>
     </a>
