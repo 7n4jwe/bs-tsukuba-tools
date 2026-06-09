@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ハイキングルート計画 V2 | ボーイスカウトつくば第1団</title>
+<style>
+  :root {
+    --saj-green: #00664B;
+    --saj-yellow: #FFBA20;
+    --saj-red: #C22047;
+    --saj-navy: #064583;
+    --bg: #F2F2F7;
+    --card: #FFFFFF;
+    --separator: rgba(60,60,67,0.12);
+    --label: #000;
+    --label-secondary: rgba(60,60,67,0.6);
+    --label-tertiary: rgba(60,60,67,0.45);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--label);
+    -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  header {
+    padding: 10px 24px;
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--separator);
+    display: flex; align-items: center; gap: 14px;
+    flex-shrink: 0;
+  }
+  .brand-logo {
+    width: 40px; height: 40px;
+    border-radius: 8px;
+    background: var(--saj-green);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700;
+  }
+  header h1 {
+    font-size: 17px; font-weight: 700;
+    padding-left: 10px;
+    border-left: 3px solid var(--saj-green);
+    line-height: 1.2;
+  }
+  header .subtitle {
+    font-size: 11px;
+    color: var(--label-secondary);
+    padding-left: 13px;
+    margin-top: 2px;
+  }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #mapWrap { flex: 1; position: relative; min-width: 0; background: #ddd; }
+  #map { width: 100%; height: 100%; }
+  #gridOverlay {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  aside {
+    width: 360px;
+    background: var(--card);
+    border-left: 1px solid var(--separator);
+    overflow-y: auto;
+    padding: 16px;
+    flex-shrink: 0;
+  }
+  .section { margin-bottom: 20px; }
+  .section h2 {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--label-secondary);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .row { display: flex; gap: 8px; align-items: center; }
+
+  input[type="text"], input[type="number"], select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--separator);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--bg);
+  }
+
+  button {
+    padding: 8px 12px;
+    border: 1px solid var(--separator);
+    background: #fff;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--label);
+  }
+  button:hover { background: #f7f7f9; }
+  button.primary { background: var(--saj-green); color: #fff; border-color: var(--saj-green); }
+  button.primary:hover { background: #00553e; }
+  button.danger { color: var(--saj-red); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-box {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .stat-box .label { font-size: 11px; color: var(--label-secondary); }
+  .stat-box .value { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  #pinList { list-style: none; padding: 0; margin: 0; }
+  #pinList li {
+    background: var(--bg);
+    border: 1px solid var(--separator);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    display: grid;
+    grid-template-columns: 18px 1fr auto;
+    gap: 6px;
+    align-items: center;
+    font-size: 13px;
+    cursor: grab;
+    user-select: none;
+  }
+  #pinList li:active { cursor: grabbing; }
+  #pinList li.cp { border-color: var(--saj-red); background: #fef3f5; }
+  #pinList .seq {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--saj-green);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+  #pinList li.cp .seq { background: var(--saj-red); }
+  #pinList .name {
+    font-weight: 600;
+    grid-column: 2;
+  }
+  #pinList .coord {
+    grid-column: 2;
+    font-size: 11px;
+    color: var(--label-secondary);
+    font-family: "SF Mono", Menlo, monospace;
+  }
+  #pinList .actions { grid-column: 3; grid-row: 1 / span 2; display: flex; gap: 4px; }
+  #pinList .actions button { padding: 4px 6px; font-size: 11px; }
+  .empty {
+    text-align: center; padding: 16px; font-size: 13px;
+    color: var(--label-secondary);
+  }
+
+  .help {
+    font-size: 11px;
+    color: var(--label-secondary);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+
+  .toolbar {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .toolbar button { flex: 1; min-width: 0; }
+
+  /* 印刷用レイアウト */
+  @media print {
+    body { display: block; overflow: visible; }
+    header, aside, .no-print { display: none !important; }
+    main { display: block; }
+    #mapWrap { width: 100%; height: 600px; page-break-after: always; }
+    #printSheet {
+      display: block !important;
+      padding: 20px;
+      font-size: 12px;
+    }
+    #printSheet h2 { font-size: 18px; margin-bottom: 8px; }
+    #printSheet table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    #printSheet th, #printSheet td { border: 1px solid #999; padding: 6px 8px; text-align: left; }
+    #printSheet th { background: #eee; }
+  }
+  #printSheet { display: none; }
+
+  /* レスポンシブ: スマホ */
+  @media (max-width: 768px) {
+    body { overflow: auto; }
+    main { display: block; }
+    #mapWrap { height: 55vh; min-height: 280px; }
+    aside { width: 100%; border-left: none; border-top: 1px solid var(--separator); }
+  }
+</style>
+</head>
+<body>
+
+<header class="no-print">
+  <div class="brand-logo">H</div>
+  <div>
+    <h1>ハイキングルート計画 V2</h1>
+    <div class="subtitle">ボーイスカウトつくば第1団</div>
+  </div>
+</header>
+
+<main>
+  <div id="mapWrap">
+    <div id="map"></div>
+    <canvas id="gridOverlay"></canvas>
+  </div>
+
+  <aside class="no-print">
+
+    <div class="section">
+      <h2>地図検索</h2>
+      <input id="searchInput" type="text" placeholder="地名・住所">
+    </div>
+
+    <div class="section">
+      <h2>ルート統計</h2>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="label">ピン数</div>
+          <div class="value" id="statPins">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">CP数</div>
+          <div class="value" id="statCPs">0</div>
+        </div>
+        <div class="stat-box" style="grid-column: 1 / span 2">
+          <div class="label">総距離</div>
+          <div class="value" id="statDist">— km</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>ピンリスト <span style="font-weight:400;text-transform:none;font-size:10px">(地図クリックで追加・ドラッグで並び替え)</span></h2>
+      <ul id="pinList"></ul>
+      <div id="pinEmpty" class="empty">地図をクリックしてピンを追加</div>
+      <div class="toolbar" style="margin-top:8px">
+        <button id="btnClearAll" class="danger">全削除</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>グリッド原点</h2>
+      <p class="help">CP座標(XnnnYnnn)は、グリッド左下隅を 000,000 として計算されます。<br>地図を拡大/縮小すると自動で再描画されます。</p>
+      <div class="toolbar" style="margin-top:8px">
+        <button id="btnResetOrigin">表示範囲に合わせて再設定</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>出力</h2>
+      <div class="toolbar">
+        <button id="btnPrint" class="primary">印刷レイアウト</button>
+        <button id="btnCSV">CSV保存</button>
+      </div>
+    </div>
+
+  </aside>
+</main>
+
+<!-- 印刷用シート -->
+<div id="printSheet">
+  <h2>ハイキングルート計画</h2>
+  <div id="printMeta"></div>
+  <h3 style="margin-top:16px">チェックポイント一覧</h3>
+  <table id="printCpTable">
+    <thead>
+      <tr><th>#</th><th>名称</th><th>X座標</th><th>Y座標</th><th>区間距離</th><th>累計距離</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+// =================================================================
+// グローバル状態
+// =================================================================
+let map;
+let polyline;
+const pins = []; // { id, lat, lng, marker, type, name }
+let nextId = 1;
+let gridOrigin = null; // {lat, lng} = グリッド左下隅
+const CELL_METERS = 500; // 1セル = 500m (1:25000 の 2cm方眼)
+
+// =================================================================
+// Google Maps 初期化
+// =================================================================
+function initMap() {
+  const center = { lat: 35.9499, lng: 139.9750 }; // 守谷あたり
+  map = new google.maps.Map(document.getElementById('map'), {
+    center, zoom: 14,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    zoomControl: true,
+    gestureHandling: 'greedy',
+    styles: window.matchMedia('(prefers-color-scheme: dark)').matches ? darkMapStyle() : []
+  });
+
+  // 地図クリックでピン追加
+  map.addListener('click', (e) => {
+    addPin(e.latLng.lat(), e.latLng.lng());
+  });
+
+  // ズーム/パン時にグリッド再描画
+  map.addListener('idle', () => {
+    if (!gridOrigin) resetGridOriginToView();
+    drawGrid();
+    updateAllCpCoords();
+  });
+
+  // 検索
+  const input = document.getElementById('searchInput');
+  const ac = new google.maps.places.Autocomplete(input, {
+    fields: ['geometry'],
+    componentRestrictions: { country: 'jp' }
+  });
+  ac.addListener('place_changed', () => {
+    const p = ac.getPlace();
+    if (p.geometry && p.geometry.location) {
+      map.panTo(p.geometry.location);
+      map.setZoom(15);
+    }
+  });
+
+  setupGridCanvas();
+  setupSortable();
+  bindButtons();
+}
+
+function darkMapStyle() {
+  return [
+    { elementType: "geometry", stylers: [{ color: "#1c1c1e" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#8e8e93" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#2c2c2e" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#064583" }] }
+  ];
+}
+
+// =================================================================
+// グリッド描画 (Canvas overlay)
+// =================================================================
+function setupGridCanvas() {
+  const canvas = document.getElementById('gridOverlay');
+  const resize = () => {
+    const rect = document.getElementById('mapWrap').getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    drawGrid();
+  };
+  window.addEventListener('resize', resize);
+  resize();
+}
+
+function resetGridOriginToView() {
+  const b = map.getBounds();
+  if (!b) return;
+  const sw = b.getSouthWest();
+  gridOrigin = { lat: sw.lat(), lng: sw.lng() };
+}
+
+// 緯度経度 → 画面ピクセル
+function latLngToPx(lat, lng) {
+  const proj = map.getProjection();
+  if (!proj) return null;
+  const scale = Math.pow(2, map.getZoom());
+  const bounds = map.getBounds();
+  if (!bounds) return null;
+  const ne = bounds.getNorthEast();
+  const sw = bounds.getSouthWest();
+
+  const nwWorld = proj.fromLatLngToPoint(new google.maps.LatLng(ne.lat(), sw.lng()));
+  const pointWorld = proj.fromLatLngToPoint(new google.maps.LatLng(lat, lng));
+
+  return {
+    x: (pointWorld.x - nwWorld.x) * scale,
+    y: (pointWorld.y - nwWorld.y) * scale
+  };
+}
+
+// 2点間距離 (m)
+function distanceMeters(lat1, lng1, lat2, lng2) {
+  if (window.google && google.maps && google.maps.geometry) {
+    return google.maps.geometry.spherical.computeDistanceBetween(
+      new google.maps.LatLng(lat1, lng1),
+      new google.maps.LatLng(lat2, lng2)
+    );
+  }
+  // フォールバック (Haversine)
+  const R = 6371000;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// グリッド描画
+function drawGrid() {
+  const canvas = document.getElementById('gridOverlay');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!gridOrigin || !map.getBounds()) return;
+
+  // 原点から1セル(500m)分の北方向の差分
+  const oneCellLatStep = (500 / 111320); // 1度緯度 ≈ 111320m
+  const originPx = latLngToPx(gridOrigin.lat, gridOrigin.lng);
+  const oneCellNorthPx = latLngToPx(gridOrigin.lat + oneCellLatStep, gridOrigin.lng);
+  if (!originPx || !oneCellNorthPx) return;
+  const cellPxY = Math.abs(originPx.y - oneCellNorthPx.y);
+
+  // 東方向の差分 (緯度補正)
+  const lngScale = Math.cos(gridOrigin.lat * Math.PI / 180);
+  const oneCellLngStep = (500 / (111320 * lngScale));
+  const oneCellEastPx = latLngToPx(gridOrigin.lat, gridOrigin.lng + oneCellLngStep);
+  const cellPxX = Math.abs(oneCellEastPx.x - originPx.x);
+
+  if (cellPxX < 5 || cellPxY < 5) return; // 細かすぎたら描画スキップ
+
+  ctx.strokeStyle = 'rgba(6, 69, 131, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.font = '600 11px "SF Mono", Menlo, monospace';
+  ctx.fillStyle = 'rgba(6, 69, 131, 0.9)';
+  ctx.textBaseline = 'top';
+
+  // 縦線(X軸)
+  let i = 0;
+  while (true) {
+    const px = originPx.x + i * cellPxX;
+    if (px > canvas.width + cellPxX) break;
+    if (px < -cellPxX) { i++; continue; }
+    ctx.beginPath();
+    ctx.moveTo(px, 0);
+    ctx.lineTo(px, canvas.height);
+    ctx.stroke();
+    if (i > 0 && i % 1 === 0) {
+      ctx.fillText(String(i).padStart(2, '0'), px + 2, 2);
+    }
+    i++;
+  }
+  // 左側にはみ出した負の方向も
+  i = -1;
+  while (true) {
+    const px = originPx.x + i * cellPxX;
+    if (px < -cellPxX) break;
+    ctx.beginPath();
+    ctx.moveTo(px, 0);
+    ctx.lineTo(px, canvas.height);
+    ctx.stroke();
+    i--;
+  }
+
+  // 横線(Y軸) ※Y軸は北方向=上=Y増加
+  let j = 0;
+  while (true) {
+    const py = originPx.y - j * cellPxY; // 上方向に j 増加
+    if (py < -cellPxY) break;
+    if (py > canvas.height + cellPxY) { j++; continue; }
+    ctx.beginPath();
+    ctx.moveTo(0, py);
+    ctx.lineTo(canvas.width, py);
+    ctx.stroke();
+    if (j > 0) {
+      ctx.fillText(String(j).padStart(2, '0'), 2, py + 2);
+    }
+    j++;
+  }
+  j = -1;
+  while (true) {
+    const py = originPx.y - j * cellPxY;
+    if (py > canvas.height + cellPxY) break;
+    ctx.beginPath();
+    ctx.moveTo(0, py);
+    ctx.lineTo(canvas.width, py);
+    ctx.stroke();
+    j--;
+  }
+
+  // 原点 00
+  ctx.fillStyle = 'rgba(6, 69, 131, 1)';
+  if (originPx.x >= 0 && originPx.x <= canvas.width &&
+      originPx.y >= 0 && originPx.y <= canvas.height) {
+    ctx.fillText('00', originPx.x + 4, originPx.y - 14);
+  }
+}
+
+// 緯度経度 → グリッド座標 (例 "052063")
+function latLngToGridCoord(lat, lng) {
+  if (!gridOrigin) return null;
+  // 北方向の距離 (m)
+  const northM = distanceMeters(gridOrigin.lat, gridOrigin.lng, lat, gridOrigin.lng) *
+                 (lat >= gridOrigin.lat ? 1 : -1);
+  // 東方向の距離 (m)
+  const eastM = distanceMeters(gridOrigin.lat, gridOrigin.lng, gridOrigin.lat, lng) *
+                (lng >= gridOrigin.lng ? 1 : -1);
+
+  // セル単位 + 10分割
+  const xVal = Math.round(eastM / CELL_METERS * 10); // 例: 5.2セル → 52
+  const yVal = Math.round(northM / CELL_METERS * 10);
+
+  // 3桁ずつパディング(負値も簡易対応)
+  const x3 = (xVal < 0 ? '-' : '') + String(Math.abs(xVal)).padStart(3, '0');
+  const y3 = (yVal < 0 ? '-' : '') + String(Math.abs(yVal)).padStart(3, '0');
+  return { x: x3, y: y3, raw: x3 + y3 };
+}
+
+// =================================================================
+// ピン管理
+// =================================================================
+function addPin(lat, lng) {
+  const id = nextId++;
+  const seq = pins.length + 1;
+  const marker = new google.maps.Marker({
+    position: { lat, lng },
+    map: map,
+    draggable: true,
+    label: { text: String(seq), color: '#fff', fontWeight: 'bold', fontSize: '12px' },
+    icon: pinIcon('normal')
+  });
+  const pin = { id, lat, lng, marker, type: 'normal', name: `P${seq}` };
+  marker.addListener('dragend', (e) => {
+    pin.lat = e.latLng.lat();
+    pin.lng = e.latLng.lng();
+    refresh();
+  });
+  pins.push(pin);
+  refresh();
+}
+
+function pinIcon(type) {
+  const color = type === 'cp' ? '#C22047' : '#00664B';
+  return {
+    path: google.maps.SymbolPath.CIRCLE,
+    scale: 12,
+    fillColor: color,
+    fillOpacity: 1,
+    strokeColor: '#fff',
+    strokeWeight: 2
+  };
+}
+
+function removePin(id) {
+  const idx = pins.findIndex(p => p.id === id);
+  if (idx < 0) return;
+  pins[idx].marker.setMap(null);
+  pins.splice(idx, 1);
+  refresh();
+}
+
+function togglePinType(id) {
+  const p = pins.find(p => p.id === id);
+  if (!p) return;
+  p.type = p.type === 'cp' ? 'normal' : 'cp';
+  p.marker.setIcon(pinIcon(p.type));
+  refresh();
+}
+
+function clearAllPins() {
+  if (!pins.length) return;
+  if (!confirm('全てのピンを削除しますか？')) return;
+  pins.forEach(p => p.marker.setMap(null));
+  pins.length = 0;
+  refresh();
+}
+
+// =================================================================
+// 表示更新
+// =================================================================
+function refresh() {
+  updateMarkerLabels();
+  drawRoute();
+  renderPinList();
+  updateStats();
+}
+
+function updateMarkerLabels() {
+  pins.forEach((p, i) => {
+    p.marker.setLabel({ text: String(i + 1), color: '#fff', fontWeight: 'bold', fontSize: '12px' });
+  });
+}
+
+function drawRoute() {
+  if (polyline) polyline.setMap(null);
+  if (pins.length < 2) return;
+  polyline = new google.maps.Polyline({
+    path: pins.map(p => ({ lat: p.lat, lng: p.lng })),
+    strokeColor: '#C22047',
+    strokeWeight: 4,
+    strokeOpacity: 0.85,
+    map: map
+  });
+}
+
+function updateAllCpCoords() {
+  renderPinList();
+}
+
+function renderPinList() {
+  const ul = document.getElementById('pinList');
+  ul.innerHTML = '';
+  pins.forEach((p, i) => {
+    const li = document.createElement('li');
+    li.dataset.id = p.id;
+    if (p.type === 'cp') li.classList.add('cp');
+
+    const seq = document.createElement('div');
+    seq.className = 'seq';
+    seq.textContent = String(i + 1);
+
+    const name = document.createElement('div');
+    name.className = 'name';
+    const coord = latLngToGridCoord(p.lat, p.lng);
+    if (p.type === 'cp' && coord) {
+      name.textContent = `★ CP / ${coord.raw}`;
+    } else {
+      name.textContent = p.name;
+    }
+
+    const coordDiv = document.createElement('div');
+    coordDiv.className = 'coord';
+    coordDiv.textContent = `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const cpBtn = document.createElement('button');
+    cpBtn.textContent = p.type === 'cp' ? '通常' : 'CP';
+    cpBtn.onclick = (e) => { e.stopPropagation(); togglePinType(p.id); };
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '×';
+    delBtn.className = 'danger';
+    delBtn.onclick = (e) => { e.stopPropagation(); removePin(p.id); };
+    actions.appendChild(cpBtn);
+    actions.appendChild(delBtn);
+
+    li.appendChild(seq);
+    li.appendChild(name);
+    li.appendChild(coordDiv);
+    li.appendChild(actions);
+    ul.appendChild(li);
+  });
+  document.getElementById('pinEmpty').style.display = pins.length ? 'none' : 'block';
+}
+
+function updateStats() {
+  document.getElementById('statPins').textContent = pins.length;
+  document.getElementById('statCPs').textContent = pins.filter(p => p.type === 'cp').length;
+  let total = 0;
+  for (let i = 1; i < pins.length; i++) {
+    total += distanceMeters(pins[i-1].lat, pins[i-1].lng, pins[i].lat, pins[i].lng);
+  }
+  document.getElementById('statDist').textContent =
+    pins.length < 2 ? '— km' : (total / 1000).toFixed(2) + ' km';
+}
+
+// =================================================================
+// ドラッグ並び替え
+// =================================================================
+function setupSortable() {
+  const ul = document.getElementById('pinList');
+  Sortable.create(ul, {
+    animation: 150,
+    onEnd: (e) => {
+      const item = pins.splice(e.oldIndex, 1)[0];
+      pins.splice(e.newIndex, 0, item);
+      refresh();
+    }
+  });
+}
+
+// =================================================================
+// ボタン処理
+// =================================================================
+function bindButtons() {
+  document.getElementById('btnClearAll').onclick = clearAllPins;
+  document.getElementById('btnResetOrigin').onclick = () => {
+    resetGridOriginToView();
+    drawGrid();
+    renderPinList();
+  };
+  document.getElementById('btnPrint').onclick = preparePrint;
+  document.getElementById('btnCSV').onclick = exportCSV;
+}
+
+function preparePrint() {
+  const sheet = document.getElementById('printSheet');
+  const tbody = sheet.querySelector('tbody');
+  tbody.innerHTML = '';
+  let cumul = 0;
+  pins.forEach((p, i) => {
+    if (p.type !== 'cp') {
+      if (i > 0) cumul += distanceMeters(pins[i-1].lat, pins[i-1].lng, p.lat, p.lng);
+      return;
+    }
+    const coord = latLngToGridCoord(p.lat, p.lng) || { x: '-', y: '-' };
+    const seg = i > 0 ? distanceMeters(pins[i-1].lat, pins[i-1].lng, p.lat, p.lng) : 0;
+    cumul += seg;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i + 1}</td><td>${p.name}</td><td>${coord.x}</td><td>${coord.y}</td>` +
+                   `<td>${(seg/1000).toFixed(2)} km</td><td>${(cumul/1000).toFixed(2)} km</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('printMeta').textContent =
+    `総距離: ${(cumul/1000).toFixed(2)} km / ピン数: ${pins.length} / CP数: ${pins.filter(p=>p.type==='cp').length} / 作成日: ${new Date().toLocaleDateString('ja-JP')}`;
+  window.print();
+}
+
+function exportCSV() {
+  const rows = [['#', '種別', '名称', 'X', 'Y', 'lat', 'lng', '区間距離(m)', '累計距離(m)']];
+  let cumul = 0;
+  pins.forEach((p, i) => {
+    const coord = latLngToGridCoord(p.lat, p.lng) || { x: '', y: '' };
+    const seg = i > 0 ? distanceMeters(pins[i-1].lat, pins[i-1].lng, p.lat, p.lng) : 0;
+    cumul += seg;
+    rows.push([
+      i + 1,
+      p.type === 'cp' ? 'CP' : '通常',
+      p.name,
+      coord.x, coord.y,
+      p.lat.toFixed(6), p.lng.toFixed(6),
+      Math.round(seg), Math.round(cumul)
+    ]);
+  });
+  const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `hiking-route-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+</script>
+
+<!-- Google Maps API -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDaBeljApVdsOH3OOlygwtSmxU8LF0foAQ&libraries=places,geometry&language=ja&region=JP&callback=initMap" async defer></script>
+
+</body>
+</html>
