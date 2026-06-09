@@ -669,11 +669,12 @@
   <aside>
 
     <div class="tabbar">
-      <button class="tab active" data-tab="print">地図・印刷</button>
+      <button class="tab active" data-tab="map">地図</button>
       <button class="tab" data-tab="route">ルート</button>
+      <button class="tab" data-tab="print">印刷</button>
     </div>
 
-    <div id="tabPrint">
+    <div id="tabMap">
 
     <div class="section">
       <h2>場所</h2>
@@ -701,30 +702,6 @@
         <div class="empty"></div>
       </div>
       <div class="hint" style="text-align:center;margin-top:4px">中心ピンを置いた位置が「原点」になります。↑↓←→で1枚ずつ隣接シートに移動できます。</div>
-    </div>
-
-    <div class="section">
-      <h2>用紙</h2>
-      <div class="grid-2">
-        <label>サイズ
-          <select id="paperSize">
-            <option value="A4">A4</option>
-            <option value="A3" selected>A3</option>
-          </select>
-        </label>
-        <label>向き
-          <select id="paperOrient">
-            <option value="portrait">縦</option>
-            <option value="landscape" selected>横</option>
-          </select>
-        </label>
-      </div>
-      <label>縮尺
-        <select id="paperScale">
-          <option value="25000">1:25,000</option>
-          <option value="50000">1:50,000</option>
-        </select>
-      </label>
     </div>
 
     <div class="section">
@@ -804,28 +781,11 @@
       </div>
     </div>
 
-    <div class="section">
-      <h2>その他</h2>
-      <label class="row"><input type="checkbox" id="ovScale" checked> 距離スケール</label>
-      <label class="row"><input type="checkbox" id="ovPin"> 中心ピン</label>
+    <div class="actions" style="margin-top:2px">
+      <button class="primary" id="btnMapToPrint">印刷へ →</button>
     </div>
 
-    <div class="section">
-      <h2>タイトル</h2>
-      <label>タイトル
-        <input id="titleInput" type="text" placeholder="例: ハイキング" />
-      </label>
-    </div>
-
-    <div class="section">
-      <h2>出力</h2>
-      <div class="actions">
-        <button class="primary" id="previewBtn" disabled>プレビュー</button>
-      </div>
-      <div class="hint">プレビュー画面でPDF/PNG出力を選択できます。ルートを登録している場合は地図に重ねて印刷されます。</div>
-    </div>
-
-    </div><!-- /tabPrint -->
+    </div><!-- /tabMap -->
 
     <div id="tabRoute" style="display:none">
       <div class="section">
@@ -839,7 +799,6 @@
         <ul id="routeList"></ul>
         <div id="routeEmpty" class="hint" style="text-align:center;padding:10px 0">まだピンがありません</div>
         <div class="actions" style="margin-top:10px">
-          <button class="primary" id="btnRoutePreview">地図プレビュー</button>
           <button class="secondary" id="btnRouteClear">全消去</button>
         </div>
         <h2 style="margin-top:16px">ポイントリスト出力（CPのみ）</h2>
@@ -847,7 +806,58 @@
           <button class="secondary" id="btnListPrint">印刷</button>
           <button class="secondary" id="btnListCSV">CSV</button>
         </div>
-        <div class="hint" style="margin-top:8px">座標は印刷地図の軸番号（左下00基準）と一致するXnnnYnnn形式。距離はチェックポイント間（ルート沿い）です。中心が未設定だと座標は算出できないため、先に「地図・印刷」タブで中心を設定してください。</div>
+        <div class="hint" style="margin-top:8px">座標は印刷地図の軸番号（左下00基準）と一致するXnnnYnnn形式。距離はチェックポイント間（ルート沿い）です。中心が未設定だと座標は算出できないため、先に「地図」タブで中心を設定してください。</div>
+        <div class="actions" style="margin-top:12px">
+          <button class="primary" id="btnRouteToPrint">印刷へ →</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="tabPrint" style="display:none">
+      <div class="section">
+        <h2>用紙</h2>
+        <div class="grid-2">
+          <label>サイズ
+            <select id="paperSize">
+              <option value="A4">A4</option>
+              <option value="A3" selected>A3</option>
+            </select>
+          </label>
+          <label>向き
+            <select id="paperOrient">
+              <option value="portrait">縦</option>
+              <option value="landscape" selected>横</option>
+            </select>
+          </label>
+        </div>
+        <label>縮尺
+          <select id="paperScale">
+            <option value="25000">1:25,000</option>
+            <option value="50000">1:50,000</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="section">
+        <h2>印刷に含める</h2>
+        <label class="row"><input type="checkbox" id="ovRoute" checked> ルート（線・CP）を重ねる</label>
+        <label class="row"><input type="checkbox" id="ovScale" checked> 距離スケール</label>
+        <label class="row"><input type="checkbox" id="ovPin"> 中心ピン</label>
+      </div>
+
+      <div class="section">
+        <h2>タイトル</h2>
+        <label>タイトル
+          <input id="titleInput" type="text" placeholder="例: ハイキング" />
+        </label>
+      </div>
+
+      <div class="section">
+        <h2>出力</h2>
+        <div class="actions">
+          <button class="primary" id="previewBtn" disabled>プレビュー</button>
+        </div>
+        <div class="hint">プレビュー画面でPDF/PNG出力を選べます。方眼・磁北線の設定は「地図」タブ、ルートの重ね有無は上の「印刷に含める」で切り替えます。</div>
       </div>
     </div>
 
@@ -1633,11 +1643,14 @@ async function buildPrintCanvas() {
     drawCenterPin(ctx, mapX + mapCanvas.width / 2, mapY + mapCanvas.height / 2);
   }
 
-  // ルート（ピン・線。CPのみ番号付与）
-  drawRouteOverlay(ctx, mapX, mapY, mapCanvas.width, mapCanvas.height, {
-    centerLat: centerLatLng.lat, centerLng: centerLatLng.lng,
-    mapWmm: mapWadj, mapHmm: mapHadj, scale,
-  });
+  // ルート（ピン・線。CPのみ番号付与）※「印刷に含める」のルート重ねON時のみ
+  const ovRouteEl = document.getElementById('ovRoute');
+  if (!ovRouteEl || ovRouteEl.checked) {
+    drawRouteOverlay(ctx, mapX, mapY, mapCanvas.width, mapCanvas.height, {
+      centerLat: centerLatLng.lat, centerLng: centerLatLng.lng,
+      mapWmm: mapWadj, mapHmm: mapHadj, scale,
+    });
+  }
 
   // ヘッダー
   drawHeader(ctx, MARGIN_MM, MARGIN_MM, paperW - MARGIN_MM * 2, HEADER_MM, {
@@ -1934,31 +1947,28 @@ function makeFilename(ext) {
 //   ・ピンをクリック → CP化（CPにだけ番号）。通常ピンは番号なし。
 //   ・印刷時はピンを小さく描画、CPのみ番号。
 // ============================================================
-let currentTab = 'print';
+let currentTab = 'map';
 const routePins = []; // { lat, lng, isCP, cpNo, gmarker, lmarker }
 let routePolyline = null;   // google
 let routeLeafLine = null;   // leaflet
 
+function switchTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tabbar .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.getElementById('tabMap').style.display   = name === 'map'   ? '' : 'none';
+  document.getElementById('tabRoute').style.display = name === 'route' ? '' : 'none';
+  document.getElementById('tabPrint').style.display = name === 'print' ? '' : 'none';
+}
+
 function setupRouteTab() {
   document.querySelectorAll('.tabbar .tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tabbar .tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentTab = btn.dataset.tab;
-      document.getElementById('tabPrint').style.display = currentTab === 'print' ? '' : 'none';
-      document.getElementById('tabRoute').style.display = currentTab === 'route' ? '' : 'none';
-    });
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
+  document.getElementById('btnMapToPrint').addEventListener('click', () => switchTab('print'));
+  document.getElementById('btnRouteToPrint').addEventListener('click', () => switchTab('print'));
   document.getElementById('btnRouteClear').addEventListener('click', clearRoute);
   document.getElementById('btnListCSV').addEventListener('click', exportRouteCSV);
   document.getElementById('btnListPrint').addEventListener('click', printCpList);
-  document.getElementById('btnRoutePreview').addEventListener('click', () => {
-    if (!centerLatLng) {
-      alert('先に「地図・印刷」タブで地図をクリックして中心を設定してください。');
-      return;
-    }
-    document.getElementById('previewBtn').click();
-  });
   // リスト並び替え
   if (window.Sortable) {
     Sortable.create(document.getElementById('routeList'), {
@@ -1970,6 +1980,7 @@ function setupRouteTab() {
       }
     });
   }
+  switchTab('map');
   renderRouteList();
 }
 
