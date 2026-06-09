@@ -480,6 +480,19 @@
     font-weight: 600;
     border-radius: var(--radius-pill);
   }
+  #previewPages {
+    width: 100%; overflow: auto;
+    display: flex; flex-direction: column; gap: 16px; align-items: center;
+    padding: 4px 0;
+  }
+  #previewPages .ppage { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  #previewPages .plabel { color: #fff; font-size: 13px; font-weight: 600; }
+  #previewPages canvas {
+    background: #fff; border-radius: 4px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    max-width: none; max-height: none;
+    image-rendering: -webkit-optimize-contrast;
+  }
 
   /* API Key dialog */
   #apiKeyDialog {
@@ -866,7 +879,7 @@
 
 <!-- Preview overlay -->
 <div class="preview-overlay" id="preview">
-  <canvas id="previewCanvas"></canvas>
+  <div id="previewPages"></div>
   <div class="pbar">
     <button class="secondary" id="closePreview">閉じる</button>
     <button id="downloadPng">PNG保存</button>
@@ -1544,7 +1557,48 @@ function loadTile(urlTpl, z, x, y) {
 // ============================================================
 // 印刷用紙Canvasの組み立て
 // ============================================================
-async function buildPrintCanvas() {
+// ルートが被っている地図(シート)の一覧を返す（ピン位置＋区間を細かくサンプリング）
+function getRouteSheets() {
+  const CT = ctCenter();
+  if (!CT || !routePins.length) return [];
+  const dims = getOutputMapDimensions();
+  const cosLat = Math.cos(CT.lat * Math.PI / 180);
+  const toCR = (lat, lng) => {
+    const Nm = (lat - CT.lat) * 111000;
+    const Em = (lng - CT.lng) * 111000 * cosLat;
+    return {
+      col: Math.floor((Em + dims.realWm / 2) / dims.realWm),
+      row: Math.floor((Nm + dims.realHm / 2) / dims.realHm),
+    };
+  };
+  const set = new Set();
+  const add = (lat, lng) => { const { col, row } = toCR(lat, lng); set.add(col + ',' + row); };
+  const sampleStep = Math.min(dims.realWm, dims.realHm) / 4;
+  for (let i = 0; i < routePins.length; i++) {
+    add(routePins[i].lat, routePins[i].lng);
+    if (i > 0) {
+      const a = routePins[i-1], b = routePins[i];
+      const steps = Math.max(2, Math.ceil(routeDist(a, b) / sampleStep));
+      for (let s = 1; s < steps; s++) {
+        const t = s / steps;
+        add(a.lat + (b.lat - a.lat) * t, a.lng + (b.lng - a.lng) * t);
+      }
+    }
+  }
+  const sheets = [...set].map(k => {
+    const [col, row] = k.split(',').map(Number);
+    return {
+      col, row, label: mapLabel(col, row),
+      lat: CT.lat + (row * dims.realHm) / 111000,
+      lng: CT.lng + (col * dims.realWm) / (111000 * cosLat),
+    };
+  });
+  sheets.sort((a, b) => (b.row - a.row) || (a.col - b.col)); // 北→南、西→東
+  return sheets;
+}
+
+async function buildPrintCanvas(printCenter, mapNo) {
+  const C = printCenter || centerLatLng;
   const paperKey = document.getElementById('paperSize').value;
   const orient = document.getElementById('paperOrient').value;
   const scale = parseInt(document.getElementById('paperScale').value, 10);
@@ -1608,8 +1662,8 @@ async function buildPrintCanvas() {
 
   // 地図画像の生成
   const mapCanvas = await buildMapCanvas({
-    centerLat: centerLatLng.lat,
-    centerLng: centerLatLng.lng,
+    centerLat: C.lat,
+    centerLng: C.lng,
     mapWidthMm: mapWadj,
     mapHeightMm: mapHadj,
     scale, tileKey,
@@ -1633,7 +1687,7 @@ async function buildPrintCanvas() {
   }
 
   // 磁北線
-  const decl = calcDeclination(centerLatLng.lat, centerLatLng.lng);
+  const decl = calcDeclination(C.lat, C.lng);
   if (ovMag) {
     drawMagneticLines(ctx, mapX, mapY, mapCanvas.width, mapCanvas.height, decl, magOpts);
   }
@@ -1647,19 +1701,19 @@ async function buildPrintCanvas() {
   const ovRouteEl = document.getElementById('ovRoute');
   if (!ovRouteEl || ovRouteEl.checked) {
     drawRouteOverlay(ctx, mapX, mapY, mapCanvas.width, mapCanvas.height, {
-      centerLat: centerLatLng.lat, centerLng: centerLatLng.lng,
+      centerLat: C.lat, centerLng: C.lng,
       mapWmm: mapWadj, mapHmm: mapHadj, scale,
     });
   }
 
   // ヘッダー
   drawHeader(ctx, MARGIN_MM, MARGIN_MM, paperW - MARGIN_MM * 2, HEADER_MM, {
-    title, paperKey, orient, scale
+    title, paperKey, orient, scale, mapNo
   });
 
   // フッター
   drawFooter(ctx, MARGIN_MM, paperH - MARGIN_MM - FOOTER_MM, paperW - MARGIN_MM * 2, FOOTER_MM, {
-    lat: centerLatLng.lat, lng: centerLatLng.lng,
+    lat: C.lat, lng: C.lng,
     decl, scale, tileKey, showScaleBar: ovScale,
   });
 
@@ -1792,7 +1846,7 @@ function drawHeader(ctx, xMm, yMm, wMm, hMm, info) {
   ctx.textAlign = 'left';
   ctx.fillText(titleStr, x, y + h * 0.4);
 
-  const meta = `1:${info.scale.toLocaleString()}  /  ${info.paperKey} ${info.orient === 'portrait' ? '縦' : '横'}`;
+  const meta = `1:${info.scale.toLocaleString()}  /  ${info.paperKey} ${info.orient === 'portrait' ? '縦' : '横'}` + (info.mapNo ? `  /  地図 ${info.mapNo}` : '');
   const metaSize = mmToPx(3);
   ctx.font = `400 ${metaSize}px "Hiragino Sans","Yu Gothic","Meiryo",sans-serif`;
   ctx.textAlign = 'right';
@@ -1872,29 +1926,53 @@ function drawFooter(ctx, xMm, yMm, wMm, hMm, info) {
 // ============================================================
 // プレビュー & ダウンロード
 // ============================================================
-let currentPrintData = null;
+let currentPrintPages = []; // [{ canvas, paperW, paperH, label }]
 
 document.getElementById('previewBtn').addEventListener('click', async () => {
   if (!centerLatLng) return;
   const btn = document.getElementById('previewBtn');
   btn.disabled = true;
   btn.textContent = '生成中...';
+
+  // ルート重ねONかつルートがある場合は、被っている全シートを出力。それ以外は中心の1枚。
+  const ovRouteOn = !document.getElementById('ovRoute') || document.getElementById('ovRoute').checked;
+  let centers;
+  if (ovRouteOn && routePins.length) {
+    const sheets = getRouteSheets();
+    centers = sheets.length
+      ? sheets.map(s => ({ lat: s.lat, lng: s.lng, label: s.label }))
+      : [{ lat: centerLatLng.lat, lng: centerLatLng.lng, label: null }];
+  } else {
+    centers = [{ lat: centerLatLng.lat, lng: centerLatLng.lng, label: null }];
+  }
+
+  const wrap = document.getElementById('previewPages');
+  wrap.innerHTML = '';
+  currentPrintPages = [];
   try {
-    const result = await buildPrintCanvas();
-    currentPrintData = result;
-    const prev = document.getElementById('previewCanvas');
-    // Canvasの実解像度は印刷物と同じに保ち、CSSで表示サイズだけ縮める。
-    // これにより細い破線・点線も縮小時に潰れずに正しくレンダリングされる。
-    prev.width = result.canvas.width;
-    prev.height = result.canvas.height;
-    const pctx = prev.getContext('2d');
-    pctx.drawImage(result.canvas, 0, 0);
-    // CSSでフィット
-    const maxW = window.innerWidth * 0.88;
-    const maxH = window.innerHeight * 0.78;
-    const ratio = Math.min(maxW / result.canvas.width, maxH / result.canvas.height);
-    prev.style.width = (result.canvas.width * ratio) + 'px';
-    prev.style.height = (result.canvas.height * ratio) + 'px';
+    for (let i = 0; i < centers.length; i++) {
+      btn.textContent = centers.length > 1 ? `生成中... (${i+1}/${centers.length})` : '生成中...';
+      const c = centers[i];
+      const result = await buildPrintCanvas({ lat: c.lat, lng: c.lng }, c.label);
+      currentPrintPages.push({ canvas: result.canvas, paperW: result.paperW, paperH: result.paperH, label: c.label });
+
+      const page = document.createElement('div');
+      page.className = 'ppage';
+      if (c.label) {
+        const lab = document.createElement('div');
+        lab.className = 'plabel';
+        lab.textContent = '地図 ' + c.label;
+        page.appendChild(lab);
+      }
+      const cv = result.canvas; // 実解像度のまま、CSSで表示サイズだけ縮小
+      const maxW = window.innerWidth * 0.84;
+      const maxH = window.innerHeight * (centers.length > 1 ? 0.62 : 0.74);
+      const ratio = Math.min(maxW / cv.width, maxH / cv.height);
+      cv.style.width = (cv.width * ratio) + 'px';
+      cv.style.height = (cv.height * ratio) + 'px';
+      page.appendChild(cv);
+      wrap.appendChild(page);
+    }
     document.getElementById('preview').classList.add('active');
   } catch (err) {
     alert('生成エラー: ' + err.message);
@@ -1910,25 +1988,28 @@ document.getElementById('closePreview').addEventListener('click', () => {
 });
 
 document.getElementById('downloadPng').addEventListener('click', () => {
-  if (!currentPrintData) return;
-  const a = document.createElement('a');
-  a.download = makeFilename('png');
-  a.href = currentPrintData.canvas.toDataURL('image/png');
-  a.click();
+  if (!currentPrintPages.length) return;
+  currentPrintPages.forEach((pg, i) => {
+    const a = document.createElement('a');
+    const suffix = pg.label ? '_' + pg.label : (currentPrintPages.length > 1 ? '_' + (i+1) : '');
+    a.download = makeFilename('png').replace(/\.png$/, suffix + '.png');
+    a.href = pg.canvas.toDataURL('image/png');
+    a.click();
+  });
 });
 
 document.getElementById('downloadPdf').addEventListener('click', () => {
-  if (!currentPrintData) return;
-  const { canvas, paperW, paperH } = currentPrintData;
+  if (!currentPrintPages.length) return;
   const { jsPDF } = window.jspdf;
-  const orient = paperW > paperH ? 'landscape' : 'portrait';
-  const pdf = new jsPDF({
-    orientation: orient,
-    unit: 'mm',
-    format: paperW > paperH ? [paperH, paperW] : [paperW, paperH],
+  let pdf = null;
+  currentPrintPages.forEach((pg, i) => {
+    const orient = pg.paperW > pg.paperH ? 'landscape' : 'portrait';
+    const fmt = pg.paperW > pg.paperH ? [pg.paperH, pg.paperW] : [pg.paperW, pg.paperH];
+    if (i === 0) pdf = new jsPDF({ orientation: orient, unit: 'mm', format: fmt });
+    else pdf.addPage(fmt, orient);
+    const imgData = pg.canvas.toDataURL('image/jpeg', 0.92);
+    pdf.addImage(imgData, 'JPEG', 0, 0, pg.paperW, pg.paperH);
   });
-  const imgData = canvas.toDataURL('image/jpeg', 0.92);
-  pdf.addImage(imgData, 'JPEG', 0, 0, paperW, paperH);
   pdf.save(makeFilename('pdf'));
 });
 
