@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="ボーイスカウトつくば第1団 ツール集 - 方角ナビ・地形図印刷ツール">
+<meta name="description" content="ボーイスカウトつくば第1団 ツール集 - 方角ナビ・ハイキングルート計画・地形図印刷ツール">
 <title>ツール集 | ボーイスカウトつくば第1団</title>
 <style>
   :root {
@@ -109,6 +109,7 @@
   }
   .icon-direction { background: var(--scout-red); }
   .icon-hiking    { background: var(--scout-green); }
+  .icon-route     { background: var(--scout-navy); }
   .icon-bvs       { background: var(--scout-yellow); color: #5a3a00; }
   .tool-title {
     font-size: 19px;
@@ -127,6 +128,7 @@
     margin-top: 2px;
   }
   .tool-badge.scout-only { background: var(--scout-navy); color: #fff; }
+  .tool-badge.new { background: var(--scout-green); color: #fff; }
   .tool-desc {
     font-size: 14px;
     color: var(--label-secondary);
@@ -168,6 +170,14 @@
       <div class="tool-title">方角ナビ</div>
       <span class="tool-badge">スマートフォン専用</span>
       <div class="tool-desc">現在地から目的地への方角と距離を表示するコンパスツール。ハイキング・オリエンテーリングに。</div>
+      <span class="tool-link">開く →</span>
+    </a>
+
+    <a class="tool-card" href="/hiking-map-v2/">
+      <div class="tool-icon icon-route">R</div>
+      <div class="tool-title">ハイキングルート計画</div>
+      <span class="tool-badge new">NEW</span>
+      <div class="tool-desc">ルート・CP(チェックポイント)を地図上で計画し、方眼・磁北線つきの地形図をA3/A4で印刷・PDF出力。CP座標やCSVも出力。</div>
       <span class="tool-link">開く →</span>
     </a>
 
