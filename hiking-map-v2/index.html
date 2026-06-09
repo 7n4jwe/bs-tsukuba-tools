@@ -2445,10 +2445,11 @@ function buildOverviewSvg() {
   const northMin = (minR - 0.5) * dims.realHm, northMax = (maxR + 0.5) * dims.realHm;
 
   const maxW = 720, maxH = 520;
-  let cw = Math.min(170, maxW / cols);
+  const mL = 12, mT = 12;
+  // セル幅: 列数で割って全幅に収めるが、上限を設けて1枚のとき巨大化しないようにする
+  let cw = Math.min(220, (maxW - mL * 2) / cols);
   let ch = cw * (dims.realHm / dims.realWm);
   if (ch * rows > maxH) { ch = maxH / rows; cw = ch * (dims.realWm / dims.realHm); }
-  const mL = 12, mT = 12;
   const W = mL * 2 + cw * cols, H = mT * 2 + ch * rows;
   const X = e => mL + (e - eastMin) / (eastMax - eastMin) * cw * cols;
   const Y = n => mT + (northMax - n) / (northMax - northMin) * ch * rows;
@@ -2474,7 +2475,7 @@ function buildOverviewSvg() {
     }
   });
   const polyline = pts.length >= 2 ? `<polyline points="${line}" fill="none" stroke="${col.line}" stroke-width="2" stroke-linejoin="round"/>` : '';
-  return `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,'Hiragino Sans','Yu Gothic','Meiryo',sans-serif">
+  return `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" style="width:${W.toFixed(0)}px;max-width:100%;height:auto;" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,'Hiragino Sans','Yu Gothic','Meiryo',sans-serif">
     ${cells}
     ${polyline}
     ${marks}
