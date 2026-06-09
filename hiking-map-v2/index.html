@@ -839,11 +839,15 @@
         <ul id="routeList"></ul>
         <div id="routeEmpty" class="hint" style="text-align:center;padding:10px 0">まだピンがありません</div>
         <div class="actions" style="margin-top:10px">
-          <button class="primary" id="btnRoutePreview">印刷プレビュー</button>
-          <button class="secondary" id="btnRouteCSV">CSV</button>
+          <button class="primary" id="btnRoutePreview">地図プレビュー</button>
           <button class="secondary" id="btnRouteClear">全消去</button>
         </div>
-        <div class="hint" style="margin-top:8px">印刷には「地図・印刷」タブの用紙設定・中心が使われます。中心が未設定の場合は、先に「地図・印刷」タブで地図をクリックして中心を設定してください。</div>
+        <h2 style="margin-top:16px">ポイントリスト出力（CPのみ）</h2>
+        <div class="actions">
+          <button class="secondary" id="btnListPrint">印刷</button>
+          <button class="secondary" id="btnListCSV">CSV</button>
+        </div>
+        <div class="hint" style="margin-top:8px">座標は印刷地図の軸番号（左下00基準）と一致するXnnnYnnn形式。距離はチェックポイント間（ルート沿い）です。中心が未設定だと座標は算出できないため、先に「地図・印刷」タブで中心を設定してください。</div>
       </div>
     </div>
 
@@ -1946,7 +1950,8 @@ function setupRouteTab() {
     });
   });
   document.getElementById('btnRouteClear').addEventListener('click', clearRoute);
-  document.getElementById('btnRouteCSV').addEventListener('click', exportRouteCSV);
+  document.getElementById('btnListCSV').addEventListener('click', exportRouteCSV);
+  document.getElementById('btnListPrint').addEventListener('click', printCpList);
   document.getElementById('btnRoutePreview').addEventListener('click', () => {
     if (!centerLatLng) {
       alert('先に「地図・印刷」タブで地図をクリックして中心を設定してください。');
@@ -2165,26 +2170,91 @@ function clearRoute() {
   refreshRoute();
 }
 
+// CPのみのリストを生成（距離はCP間＝ルート沿い、累計はCP間距離の積算）
+function getCpList() {
+  const list = [];
+  let since = 0;       // 直前CPからのルート沿い距離
+  let cum = 0;         // CP間距離の累計
+  let seenCp = false;
+  for (let i = 0; i < routePins.length; i++) {
+    if (i > 0) since += routeDist(routePins[i-1], routePins[i]);
+    const p = routePins[i];
+    if (p.isCP) {
+      const seg = seenCp ? since : 0; // 最初のCPは区間0
+      cum += seg;
+      const gc = routeGridCoord(p.lat, p.lng) || { x: '---', y: '---', raw: '------' };
+      list.push({
+        no: list.length + 1,
+        lat: p.lat, lng: p.lng, gc,
+        seg, cum,
+      });
+      since = 0;
+      seenCp = true;
+    }
+  }
+  return list;
+}
+
 function exportRouteCSV() {
-  if (!routePins.length) { alert('ピンがありません'); return; }
-  const rows = [['#', '種別', 'CP番号', 'X', 'Y', 'lat', 'lng', '区間距離(m)', '累計距離(m)']];
-  let cumul = 0;
-  routePins.forEach((p, i) => {
-    const gc = routeGridCoord(p.lat, p.lng) || { x: '', y: '' };
-    const seg = i > 0 ? routeDist(routePins[i-1], p) : 0;
-    cumul += seg;
+  const cps = getCpList();
+  if (!cps.length) { alert('チェックポイントがありません。ピンをクリックしてCPに設定してください。'); return; }
+  const rows = [['CP', '座標(XnnnYnnn)', 'X', 'Y', '区間距離(m)', '累計距離(m)', 'lat', 'lng']];
+  cps.forEach(c => {
     rows.push([
-      i + 1, p.isCP ? 'CP' : '通常', p.isCP ? p.cpNo : '',
-      gc.x, gc.y, p.lat.toFixed(6), p.lng.toFixed(6),
-      Math.round(seg), Math.round(cumul),
+      c.no, c.gc.raw, c.gc.x, c.gc.y,
+      Math.round(c.seg), Math.round(c.cum),
+      c.lat.toFixed(6), c.lng.toFixed(6),
     ]);
   });
   const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `route_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `cplist_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
+}
+
+function printCpList() {
+  const cps = getCpList();
+  if (!cps.length) { alert('チェックポイントがありません。ピンをクリックしてCPに設定してください。'); return; }
+  const title = (document.getElementById('titleInput').value.trim()) || 'ハイキングルート';
+  const dims = getOutputMapDimensions();
+  const d = new Date();
+  const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  const totalKm = (cps.length ? cps[cps.length-1].cum / 1000 : 0).toFixed(2);
+  const rowsHtml = cps.map(c =>
+    `<tr><td class="c">${c.no}</td><td class="m">${c.gc.raw}</td>` +
+    `<td class="r">${(c.seg/1000).toFixed(2)}</td><td class="r">${(c.cum/1000).toFixed(2)}</td>` +
+    `<td class="s">${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}</td></tr>`
+  ).join('');
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+<title>${title} チェックポイント一覧</title>
+<style>
+  body{font-family:-apple-system,"Hiragino Sans","Yu Gothic","Meiryo",sans-serif;color:#111;margin:24px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .meta{font-size:12px;color:#555;margin-bottom:16px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{border:1px solid #999;padding:7px 9px;text-align:left;}
+  th{background:#eee;}
+  td.c{text-align:center;font-weight:700;width:42px;}
+  td.m{font-family:"SF Mono",Menlo,Consolas,monospace;font-weight:600;}
+  td.r{text-align:right;font-variant-numeric:tabular-nums;}
+  td.s{font-family:"SF Mono",Menlo,Consolas,monospace;color:#666;font-size:11px;}
+  .note{font-size:11px;color:#666;margin-top:12px;line-height:1.5;}
+  @media print{body{margin:12mm;}}
+</style></head><body>
+  <h1>${title} ／ チェックポイント一覧</h1>
+  <div class="meta">縮尺 1:${dims.scale.toLocaleString()}（2cm方眼=${dims.scale*20/1000}m）　/　CP数 ${cps.length}　/　総距離 ${totalKm} km　/　作成 ${dateStr}</div>
+  <table>
+    <thead><tr><th>CP</th><th>座標 (XnnnYnnn)</th><th>区間距離(km)</th><th>累計距離(km)</th><th>緯度経度</th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+  <div class="note">座標は印刷地図のX軸・Y軸の軸番号（左下00基準）に対応し、2cm方眼内を1/10で補間したXnnnYnnn形式です（例: 125045 → X=12〜13の中間, Y=04〜05の中間）。区間距離は直前CPからのルート沿い距離。</div>
+  <script>window.onload=function(){window.print();};<\/script>
+</body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { alert('ポップアップがブロックされました。ポップアップを許可してください。'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
 }
 
 // 印刷キャンバスへルートを重ねる（ピンは小さく、CPのみ番号）
@@ -2209,27 +2279,21 @@ function drawRouteOverlay(ctx, mapX, mapY, mapWpx, mapHpx, opts) {
     ctx.stroke();
   }
 
-  // ピン
+  // ピン（印刷ではCPのみ表示。非CPは非表示）
   let cpNum = 0;
   routePins.forEach(p => {
+    if (!p.isCP) return;
+    cpNum++;
     const pt = proj.toPx(p.lat, p.lng);
     const X = mapX + pt.x, Y = mapY + pt.y;
-    if (p.isCP) {
-      cpNum++;
-      const r = mmToPx(1.7);
-      ctx.beginPath(); ctx.arc(X, Y, r, 0, Math.PI * 2);
-      ctx.fillStyle = '#C22047'; ctx.fill();
-      ctx.lineWidth = mmToPx(0.3); ctx.strokeStyle = '#fff'; ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.font = `700 ${mmToPx(2)}px "Hiragino Sans","Yu Gothic","Meiryo",sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(String(cpNum), X, Y);
-    } else {
-      const r = mmToPx(0.8);
-      ctx.beginPath(); ctx.arc(X, Y, r, 0, Math.PI * 2);
-      ctx.fillStyle = '#00664B'; ctx.fill();
-      ctx.lineWidth = mmToPx(0.22); ctx.strokeStyle = '#fff'; ctx.stroke();
-    }
+    const r = mmToPx(1.7);
+    ctx.beginPath(); ctx.arc(X, Y, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#C22047'; ctx.fill();
+    ctx.lineWidth = mmToPx(0.3); ctx.strokeStyle = '#fff'; ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = `700 ${mmToPx(2)}px "Hiragino Sans","Yu Gothic","Meiryo",sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(cpNum), X, Y);
   });
   ctx.restore();
 }
