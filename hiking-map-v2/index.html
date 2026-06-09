@@ -2091,18 +2091,42 @@ function makeProj(centerLat, centerLng, mapWmm, mapHmm, scale) {
   };
 }
 
-// CPグリッド座標（印刷の軸番号と一致：左下原点・セル=2cm・3桁目は1/10セル）
-function routeGridCoord(lat, lng) {
-  if (!centerLatLng) return null;
-  const dims = getOutputMapDimensions();
-  const proj = makeProj(centerLatLng.lat, centerLatLng.lng, dims.mapWmm, dims.mapHmm, dims.scale);
+// CT（中心点をセットした地図）= 原点。移動パッドで中心を動かしてもCTは固定。
+function ctCenter() { return originLatLng || centerLatLng || null; }
+
+// 地図番号ラベル（CT基準。東=E,西=W,北=N,南=S。例 E1, W2, S2, E1N1, CT）
+function mapLabel(col, row) {
+  if (col === 0 && row === 0) return 'CT';
+  let s = '';
+  if (col > 0) s += 'E' + col; else if (col < 0) s += 'W' + (-col);
+  if (row > 0) s += 'N' + row; else if (row < 0) s += 'S' + (-row);
+  return s;
+}
+
+// 点が属する地図番号＋そのシート内ローカル座標（印刷の軸番号と一致：左下00・1/10セル）
+function pointMapInfo(lat, lng, CT, dims) {
+  const cosLat = Math.cos(CT.lat * Math.PI / 180);
+  const Nm = (lat - CT.lat) * 111000;                 // 北方向メートル
+  const Em = (lng - CT.lng) * 111000 * cosLat;        // 東方向メートル
+  const col = Math.floor((Em + dims.realWm / 2) / dims.realWm);
+  const row = Math.floor((Nm + dims.realHm / 2) / dims.realHm);
+  // そのシートの中心
+  const sheetLat = CT.lat + (row * dims.realHm) / 111000;
+  const sheetLng = CT.lng + (col * dims.realWm) / (111000 * cosLat);
+  const proj = makeProj(sheetLat, sheetLng, dims.mapWmm, dims.mapHmm, dims.scale);
   const p = proj.toPx(lat, lng);
   const stepPx = mmToPx(20);
   const xCells = p.x / stepPx;
   const yCells = (proj.mapHpx - p.y) / stepPx;
   const xv = Math.round(xCells * 10), yv = Math.round(yCells * 10);
-  const f = v => (v < 0 ? '-' : '') + String(Math.abs(v)).padStart(3, '0');
-  return { x: f(xv), y: f(yv), raw: f(xv) + f(yv) };
+  const f = v => String(Math.max(0, v)).padStart(3, '0');
+  return { col, row, label: mapLabel(col, row), x: f(xv), y: f(yv), raw: f(xv) + f(yv), Em, Nm };
+}
+
+function routeGridCoord(lat, lng) {
+  const CT = ctCenter();
+  if (!CT) return null;
+  return pointMapInfo(lat, lng, CT, getOutputMapDimensions());
 }
 
 function renderRouteList() {
@@ -2126,7 +2150,7 @@ function renderRouteList() {
     const nm = document.createElement('div');
     nm.className = 'nm';
     const gc = routeGridCoord(p.lat, p.lng);
-    nm.textContent = p.isCP ? (gc ? `CP ${p.cpNo} / ${gc.raw}` : `CP ${p.cpNo}`) : '通常ピン';
+    nm.textContent = p.isCP ? (gc ? `CP ${p.cpNo} / ${gc.label} ${gc.raw}` : `CP ${p.cpNo}`) : '通常ピン';
     const co = document.createElement('div');
     co.className = 'co';
     co.textContent = `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
@@ -2193,7 +2217,7 @@ function getCpList() {
     if (p.isCP) {
       const seg = seenCp ? since : 0; // 最初のCPは区間0
       cum += seg;
-      const gc = routeGridCoord(p.lat, p.lng) || { x: '---', y: '---', raw: '------' };
+      const gc = routeGridCoord(p.lat, p.lng) || { label: '—', x: '---', y: '---', raw: '------' };
       list.push({
         no: list.length + 1,
         lat: p.lat, lng: p.lng, gc,
@@ -2234,10 +2258,10 @@ async function exportRouteCSV() {
   const old = btn.textContent; btn.disabled = true; btn.textContent = '取得中...';
   try {
     const cps = await buildCpRows();
-    const rows = [['CP', '座標', 'X', 'Y', '区間距離(m)', '累計距離(m)', '標高(m)', '標高差(m)', 'lat', 'lng']];
+    const rows = [['CP', '地図', '座標', 'X', 'Y', '区間距離(m)', '累計距離(m)', '標高(m)', '標高差(m)', 'lat', 'lng']];
     cps.forEach(c => {
       rows.push([
-        c.no, c.gc.raw, c.gc.x, c.gc.y,
+        c.no, c.gc.label, c.gc.raw, c.gc.x, c.gc.y,
         Math.round(c.seg), Math.round(c.cum),
         c.elev == null ? '' : c.elev.toFixed(1),
         c.ed == null ? '' : c.ed.toFixed(1),
@@ -2251,6 +2275,62 @@ async function exportRouteCSV() {
     a.download = `cplist_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
   } finally { btn.disabled = false; btn.textContent = old; }
+}
+
+// ルート全体図SVG（地図(シート)のグリッドに番号を振り、ルートとCPを重ねる）
+function buildOverviewSvg() {
+  const CT = ctCenter();
+  if (!CT) return '<div class="note">中心(CT)が未設定のため全体図を描画できません。「地図」タブで中心を設定してください。</div>';
+  if (!routePins.length) return '<div class="note">ピンがありません。</div>';
+  const dims = getOutputMapDimensions();
+  const cosLat = Math.cos(CT.lat * Math.PI / 180);
+  const pts = routePins.map(p => {
+    const Nm = (p.lat - CT.lat) * 111000;
+    const Em = (p.lng - CT.lng) * 111000 * cosLat;
+    const col = Math.floor((Em + dims.realWm / 2) / dims.realWm);
+    const row = Math.floor((Nm + dims.realHm / 2) / dims.realHm);
+    return { Em, Nm, col, row, isCP: p.isCP };
+  });
+  let minC = 0, maxC = 0, minR = 0, maxR = 0;
+  pts.forEach(q => { minC = Math.min(minC, q.col); maxC = Math.max(maxC, q.col); minR = Math.min(minR, q.row); maxR = Math.max(maxR, q.row); });
+  const cols = maxC - minC + 1, rows = maxR - minR + 1;
+  const eastMin = (minC - 0.5) * dims.realWm, eastMax = (maxC + 0.5) * dims.realWm;
+  const northMin = (minR - 0.5) * dims.realHm, northMax = (maxR + 0.5) * dims.realHm;
+
+  const maxW = 720, maxH = 520;
+  let cw = Math.min(170, maxW / cols);
+  let ch = cw * (dims.realHm / dims.realWm);
+  if (ch * rows > maxH) { ch = maxH / rows; cw = ch * (dims.realWm / dims.realHm); }
+  const mL = 12, mT = 12;
+  const W = mL * 2 + cw * cols, H = mT * 2 + ch * rows;
+  const X = e => mL + (e - eastMin) / (eastMax - eastMin) * cw * cols;
+  const Y = n => mT + (northMax - n) / (northMax - northMin) * ch * rows;
+
+  let cells = '';
+  for (let c = minC; c <= maxC; c++) for (let r = minR; r <= maxR; r++) {
+    const x = X((c - 0.5) * dims.realWm), y = Y((r + 0.5) * dims.realHm);
+    const isCT = (c === 0 && r === 0);
+    cells += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${cw.toFixed(1)}" height="${ch.toFixed(1)}" fill="${isCT ? 'rgba(0,102,75,0.08)' : '#fff'}" stroke="#bbb" stroke-width="1"/>`;
+    cells += `<text x="${(x + 5).toFixed(1)}" y="${(y + 15).toFixed(1)}" font-size="12" font-weight="700" fill="${isCT ? '#00664B' : '#999'}">${mapLabel(c, r)}</text>`;
+  }
+  const line = pts.map(q => `${X(q.Em).toFixed(1)},${Y(q.Nm).toFixed(1)}`).join(' ');
+  let marks = '', cp = 0;
+  pts.forEach(q => {
+    const x = X(q.Em), y = Y(q.Nm);
+    if (q.isCP) {
+      cp++;
+      marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" fill="#C22047" stroke="#fff" stroke-width="1.5"/>`;
+      marks += `<text x="${x.toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">${cp}</text>`;
+    } else {
+      marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.4" fill="#00664B"/>`;
+    }
+  });
+  const polyline = pts.length >= 2 ? `<polyline points="${line}" fill="none" stroke="#C22047" stroke-width="2.5" stroke-linejoin="round"/>` : '';
+  return `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,'Hiragino Sans','Yu Gothic','Meiryo',sans-serif">
+    ${cells}
+    ${polyline}
+    ${marks}
+  </svg>`;
 }
 
 // 標高断面図SVG（X=距離km, Y=標高m, CPごとに点）
@@ -2323,11 +2403,12 @@ async function printCpList() {
   let up = 0, down = 0;
   cps.forEach(c => { if (c.ed != null) { if (c.ed > 0) up += c.ed; else down += c.ed; } });
   const rowsHtml = cps.map(c =>
-    `<tr><td class="c">${c.no}</td><td class="m">${c.gc.raw}</td>` +
+    `<tr><td class="c">${c.no}</td><td class="m">${c.gc.label}</td><td class="m">${c.gc.raw}</td>` +
     `<td class="r">${(c.seg/1000).toFixed(2)}</td><td class="r">${(c.cum/1000).toFixed(2)}</td>` +
     `<td class="r">${fmtElev(c.elev)}</td><td class="r">${fmtEd(c.ed)}</td>` +
     `<td class="s">${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}</td></tr>`
   ).join('');
+  const overviewSvg = buildOverviewSvg();
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
 <title>${title} チェックポイント一覧</title>
 <style>
@@ -2350,9 +2431,14 @@ async function printCpList() {
   <h1>${title} ／ チェックポイント一覧</h1>
   <div class="meta">縮尺 1:${dims.scale.toLocaleString()}（2cm方眼=${dims.scale*20/1000}m）　/　CP数 ${cps.length}　/　総距離 ${totalKm} km　/　累計上り +${up.toFixed(0)}m・下り ${down.toFixed(0)}m　/　作成 ${dateStr}</div>
   <table>
-    <thead><tr><th>CP</th><th>座標</th><th>区間距離(km)</th><th>累計距離(km)</th><th>標高(m)</th><th>標高差(m)</th><th>緯度経度</th></tr></thead>
+    <thead><tr><th>CP</th><th>地図</th><th>座標</th><th>区間距離(km)</th><th>累計距離(km)</th><th>標高(m)</th><th>標高差(m)</th><th>緯度経度</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>
+  <div class="profile">
+    <h2>ルート全体図</h2>
+    <div class="sub">中心の地図=CT、東=E・西=W・北=N・南=S。各マスが1枚の印刷地図。赤線がルート、番号付き赤点がCP。</div>
+    ${overviewSvg}
+  </div>
   <div class="profile">
     <h2>標高断面図</h2>
     <div class="sub">横軸=累計距離(km)／縦軸=標高(m)。各点はチェックポイント（番号付き）。</div>
