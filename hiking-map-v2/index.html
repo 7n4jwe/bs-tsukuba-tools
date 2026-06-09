@@ -684,7 +684,7 @@
     <div class="tabbar">
       <button class="tab active" data-tab="map">地図</button>
       <button class="tab" data-tab="route">ルート</button>
-      <button class="tab" data-tab="print">印刷</button>
+      <button class="tab" data-tab="print">入出力</button>
     </div>
 
     <div id="tabMap">
@@ -795,7 +795,7 @@
     </div>
 
     <div class="actions" style="margin-top:2px">
-      <button class="primary" id="btnMapToPrint">印刷へ →</button>
+      <button class="primary" id="btnMapToPrint">入出力へ →</button>
     </div>
 
     </div><!-- /tabMap -->
@@ -814,12 +814,6 @@
         <div class="actions" style="margin-top:10px">
           <button class="secondary" id="btnRouteClear">全消去</button>
         </div>
-        <h2 style="margin-top:16px">ポイントリスト出力（CPのみ）</h2>
-        <div class="actions">
-          <button class="secondary" id="btnListPrint">印刷</button>
-          <button class="secondary" id="btnListCSV">CSV</button>
-        </div>
-        <div class="hint" style="margin-top:8px">座標は印刷地図の軸番号（左下00基準）と一致するXnnnYnnn形式。距離はチェックポイント間（ルート沿い）です。中心が未設定だと座標は算出できないため、先に「地図」タブで中心を設定してください。</div>
       </div>
 
       <div class="section">
@@ -847,17 +841,8 @@
         </div>
       </div>
 
-      <div class="section">
-        <h2>保存・共有</h2>
-        <div class="actions">
-          <button class="secondary" id="btnExport">エクスポート</button>
-          <button class="secondary" id="btnImport">インポート</button>
-        </div>
-        <input type="file" id="importFile" accept="application/json,.json" style="display:none">
-        <div class="hint">地図の中心・用紙/方眼/磁北線などの設定・ルート・色をまとめてJSONで保存／読込します。他の人と共有すれば、同じ地図・ルートを再現して出力できます。</div>
-        <div class="actions" style="margin-top:12px">
-          <button class="primary" id="btnRouteToPrint">印刷へ →</button>
-        </div>
+      <div class="actions" style="margin-top:2px">
+        <button class="primary" id="btnRouteToPrint">入出力へ →</button>
       </div>
     </div>
 
@@ -901,11 +886,30 @@
       </div>
 
       <div class="section">
-        <h2>出力</h2>
+        <h2>地図の出力</h2>
         <div class="actions">
           <button class="primary" id="previewBtn" disabled>プレビュー</button>
         </div>
-        <div class="hint">プレビュー画面でPDF/PNG出力を選べます。方眼・磁北線の設定は「地図」タブ、ルートの重ね有無は上の「印刷に含める」で切り替えます。</div>
+        <div class="hint">プレビュー画面でPDF/PNG出力を選べます。ルートが複数の地図にまたがる場合は、被っている地図を全て出力します。方眼・磁北線の設定は「地図」タブ、ルートの重ね有無は上の「印刷に含める」で切り替えます。</div>
+      </div>
+
+      <div class="section">
+        <h2>ポイントリスト出力（CPのみ）</h2>
+        <div class="actions">
+          <button class="secondary" id="btnListPrint">印刷</button>
+          <button class="secondary" id="btnListCSV">CSV</button>
+        </div>
+        <div class="hint" style="margin-top:8px">CP一覧（地図番号・座標XnnnYnnn・CP間距離・標高/標高差）＋ルート全体図＋標高断面図を出力します。座標は中心が未設定だと算出できないため、先に「地図」タブで中心を設定してください。</div>
+      </div>
+
+      <div class="section">
+        <h2>保存・共有</h2>
+        <div class="actions">
+          <button class="secondary" id="btnExport">エクスポート</button>
+          <button class="secondary" id="btnImport">インポート</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+        <div class="hint">地図の中心・用紙/方眼/磁北線などの設定・ルート・色をまとめてJSONで保存／読込します。他の人と共有すれば、同じ地図・ルートを再現して出力できます。</div>
       </div>
     </div>
 
