@@ -2195,36 +2195,72 @@ function getCpList() {
   return list;
 }
 
-function exportRouteCSV() {
-  const cps = getCpList();
-  if (!cps.length) { alert('チェックポイントがありません。ピンをクリックしてCPに設定してください。'); return; }
-  const rows = [['CP', '座標(XnnnYnnn)', 'X', 'Y', '区間距離(m)', '累計距離(m)', 'lat', 'lng']];
-  cps.forEach(c => {
-    rows.push([
-      c.no, c.gc.raw, c.gc.x, c.gc.y,
-      Math.round(c.seg), Math.round(c.cum),
-      c.lat.toFixed(6), c.lng.toFixed(6),
-    ]);
-  });
-  const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `cplist_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
+// 標高取得（国土地理院 標高API。CORS許可あり・キー不要）
+async function fetchElev(lat, lng) {
+  try {
+    const r = await fetch(`https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php?lon=${lng}&lat=${lat}&outtype=JSON`);
+    const j = await r.json();
+    const e = parseFloat(j.elevation);
+    return isNaN(e) ? null : e;
+  } catch (_) { return null; }
 }
 
-function printCpList() {
+// CPリスト＋標高（標高差は直前CP比）
+async function buildCpRows() {
   const cps = getCpList();
-  if (!cps.length) { alert('チェックポイントがありません。ピンをクリックしてCPに設定してください。'); return; }
+  await Promise.all(cps.map(async c => { c.elev = await fetchElev(c.lat, c.lng); }));
+  cps.forEach((c, i) => {
+    c.ed = (i > 0 && c.elev != null && cps[i-1].elev != null) ? (c.elev - cps[i-1].elev) : null;
+  });
+  return cps;
+}
+function fmtElev(v) { return v == null ? '—' : v.toFixed(1); }
+function fmtEd(v) { return v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1); }
+
+async function exportRouteCSV() {
+  if (!getCpList().length) { alert('チェックポイントがありません。ピンをクリックしてCPに設定してください。'); return; }
+  const btn = document.getElementById('btnListCSV');
+  const old = btn.textContent; btn.disabled = true; btn.textContent = '取得中...';
+  try {
+    const cps = await buildCpRows();
+    const rows = [['CP', '座標', 'X', 'Y', '区間距離(m)', '累計距離(m)', '標高(m)', '標高差(m)', 'lat', 'lng']];
+    cps.forEach(c => {
+      rows.push([
+        c.no, c.gc.raw, c.gc.x, c.gc.y,
+        Math.round(c.seg), Math.round(c.cum),
+        c.elev == null ? '' : c.elev.toFixed(1),
+        c.ed == null ? '' : c.ed.toFixed(1),
+        c.lat.toFixed(6), c.lng.toFixed(6),
+      ]);
+    });
+    const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `cplist_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  } finally { btn.disabled = false; btn.textContent = old; }
+}
+
+async function printCpList() {
+  if (!getCpList().length) { alert('チェックポイントがありません。ピンをクリックしてCPに設定してください。'); return; }
+  const btn = document.getElementById('btnListPrint');
+  const old = btn.textContent; btn.disabled = true; btn.textContent = '取得中...';
+  let cps;
+  try { cps = await buildCpRows(); }
+  finally { btn.disabled = false; btn.textContent = old; }
+
   const title = (document.getElementById('titleInput').value.trim()) || 'ハイキングルート';
   const dims = getOutputMapDimensions();
   const d = new Date();
   const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
   const totalKm = (cps.length ? cps[cps.length-1].cum / 1000 : 0).toFixed(2);
+  let up = 0, down = 0;
+  cps.forEach(c => { if (c.ed != null) { if (c.ed > 0) up += c.ed; else down += c.ed; } });
   const rowsHtml = cps.map(c =>
     `<tr><td class="c">${c.no}</td><td class="m">${c.gc.raw}</td>` +
     `<td class="r">${(c.seg/1000).toFixed(2)}</td><td class="r">${(c.cum/1000).toFixed(2)}</td>` +
+    `<td class="r">${fmtElev(c.elev)}</td><td class="r">${fmtEd(c.ed)}</td>` +
     `<td class="s">${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}</td></tr>`
   ).join('');
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
@@ -2240,16 +2276,14 @@ function printCpList() {
   td.m{font-family:"SF Mono",Menlo,Consolas,monospace;font-weight:600;}
   td.r{text-align:right;font-variant-numeric:tabular-nums;}
   td.s{font-family:"SF Mono",Menlo,Consolas,monospace;color:#666;font-size:11px;}
-  .note{font-size:11px;color:#666;margin-top:12px;line-height:1.5;}
   @media print{body{margin:12mm;}}
 </style></head><body>
   <h1>${title} ／ チェックポイント一覧</h1>
-  <div class="meta">縮尺 1:${dims.scale.toLocaleString()}（2cm方眼=${dims.scale*20/1000}m）　/　CP数 ${cps.length}　/　総距離 ${totalKm} km　/　作成 ${dateStr}</div>
+  <div class="meta">縮尺 1:${dims.scale.toLocaleString()}（2cm方眼=${dims.scale*20/1000}m）　/　CP数 ${cps.length}　/　総距離 ${totalKm} km　/　累計上り +${up.toFixed(0)}m・下り ${down.toFixed(0)}m　/　作成 ${dateStr}</div>
   <table>
-    <thead><tr><th>CP</th><th>座標 (XnnnYnnn)</th><th>区間距離(km)</th><th>累計距離(km)</th><th>緯度経度</th></tr></thead>
+    <thead><tr><th>CP</th><th>座標</th><th>区間距離(km)</th><th>累計距離(km)</th><th>標高(m)</th><th>標高差(m)</th><th>緯度経度</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>
-  <div class="note">座標は印刷地図のX軸・Y軸の軸番号（左下00基準）に対応し、2cm方眼内を1/10で補間したXnnnYnnn形式です（例: 125045 → X=12〜13の中間, Y=04〜05の中間）。区間距離は直前CPからのルート沿い距離。</div>
   <script>window.onload=function(){window.print();};<\/script>
 </body></html>`;
   const w = window.open('', '_blank');
