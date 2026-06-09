@@ -684,7 +684,7 @@
     <div class="tabbar">
       <button class="tab active" data-tab="map">地図</button>
       <button class="tab" data-tab="route">ルート</button>
-      <button class="tab" data-tab="print">入出力</button>
+      <button class="tab" data-tab="print">出力</button>
     </div>
 
     <div id="tabMap">
@@ -795,7 +795,7 @@
     </div>
 
     <div class="actions" style="margin-top:2px">
-      <button class="primary" id="btnMapToPrint">入出力へ →</button>
+      <button class="primary" id="btnMapToPrint">出力へ →</button>
     </div>
 
     </div><!-- /tabMap -->
@@ -842,7 +842,7 @@
       </div>
 
       <div class="actions" style="margin-top:2px">
-        <button class="primary" id="btnRouteToPrint">入出力へ →</button>
+        <button class="primary" id="btnRouteToPrint">出力へ →</button>
       </div>
     </div>
 
@@ -879,9 +879,12 @@
       </div>
 
       <div class="section">
-        <h2>タイトル</h2>
+        <h2>タイトル・作成者</h2>
         <label>タイトル
           <input id="titleInput" type="text" placeholder="例: ハイキング" />
+        </label>
+        <label>作成者
+          <input id="authorInput" type="text" placeholder="例: ボーイスカウトつくば第1団" />
         </label>
       </div>
 
@@ -894,12 +897,11 @@
       </div>
 
       <div class="section">
-        <h2>ポイントリスト出力（CPのみ）</h2>
+        <h2>ポイントリスト出力</h2>
         <div class="actions">
           <button class="secondary" id="btnListPrint">印刷</button>
           <button class="secondary" id="btnListCSV">CSV</button>
         </div>
-        <div class="hint" style="margin-top:8px">CP一覧（地図番号・座標XnnnYnnn・CP間距離・標高/標高差）＋ルート全体図＋標高断面図を出力します。座標は中心が未設定だと算出できないため、先に「地図」タブで中心を設定してください。</div>
       </div>
 
       <div class="section">
@@ -1650,6 +1652,7 @@ async function buildPrintCanvas(printCenter, mapNo) {
   else if (layerKey === 'gsi_photo') tileKey = 'photo';
   else tileKey = 'std';
   const title = document.getElementById('titleInput').value.trim();
+  const author = (document.getElementById('authorInput') || {}).value ? document.getElementById('authorInput').value.trim() : '';
 
   const ovGrid = document.getElementById('ovGrid').checked;
   const ovAxisLabel = document.getElementById('ovAxisLabel').checked;
@@ -1753,7 +1756,7 @@ async function buildPrintCanvas(printCenter, mapNo) {
   // フッター
   drawFooter(ctx, MARGIN_MM, paperH - MARGIN_MM - FOOTER_MM, paperW - MARGIN_MM * 2, FOOTER_MM, {
     lat: C.lat, lng: C.lng,
-    decl, scale, tileKey, showScaleBar: ovScale,
+    decl, scale, tileKey, showScaleBar: ovScale, author,
   });
 
   return { canvas, paperW, paperH };
@@ -1919,7 +1922,7 @@ function drawFooter(ctx, xMm, yMm, wMm, hMm, info) {
   ctx.textBaseline = 'middle';
 
   ctx.textAlign = 'left';
-  const coord = `中心: ${info.lat.toFixed(5)}, ${info.lng.toFixed(5)}  /  磁針方位: 西偏 ${info.decl.toFixed(2)}°`;
+  const coord = `中心: ${info.lat.toFixed(5)}, ${info.lng.toFixed(5)}  /  磁針方位: 西偏 ${info.decl.toFixed(2)}°` + (info.author ? `  /  作成者: ${info.author}` : '');
   ctx.fillText(coord, x, y + h * 0.38);
 
   const credit = '出典: 国土地理院の電子地形図（タイル）に磁北線・方眼を追記して掲載';
@@ -2464,13 +2467,13 @@ function buildOverviewSvg() {
     const x = X(q.Em), y = Y(q.Nm);
     if (q.isCP) {
       cp++;
-      marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" fill="${col.cp}" stroke="#fff" stroke-width="1.5"/>`;
-      marks += `<text x="${x.toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">${cp}</text>`;
+      marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" fill="${col.cp}" stroke="#fff" stroke-width="1"/>`;
+      marks += `<text x="${x.toFixed(1)}" y="${(y - 7).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="${col.cp}">${cp}</text>`;
     } else {
-      marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.4" fill="${col.pin}"/>`;
+      marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.8" fill="${col.pin}"/>`;
     }
   });
-  const polyline = pts.length >= 2 ? `<polyline points="${line}" fill="none" stroke="${col.line}" stroke-width="2.5" stroke-linejoin="round"/>` : '';
+  const polyline = pts.length >= 2 ? `<polyline points="${line}" fill="none" stroke="${col.line}" stroke-width="2" stroke-linejoin="round"/>` : '';
   return `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,'Hiragino Sans','Yu Gothic','Meiryo',sans-serif">
     ${cells}
     ${polyline}
@@ -2541,6 +2544,7 @@ async function printCpList() {
   finally { btn.disabled = false; btn.textContent = old; }
 
   const title = (document.getElementById('titleInput').value.trim()) || 'ハイキングルート';
+  const author = (document.getElementById('authorInput') && document.getElementById('authorInput').value.trim()) || '';
   const dims = getOutputMapDimensions();
   const d = new Date();
   const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
@@ -2574,14 +2578,13 @@ async function printCpList() {
   @media print{body{margin:12mm;}}
 </style></head><body>
   <h1>${title} ／ チェックポイント一覧</h1>
-  <div class="meta">縮尺 1:${dims.scale.toLocaleString()}（2cm方眼=${dims.scale*20/1000}m）　/　CP数 ${cps.length}　/　総距離 ${totalKm} km　/　累計上り +${up.toFixed(0)}m・下り ${down.toFixed(0)}m　/　作成 ${dateStr}</div>
+  <div class="meta">縮尺 1:${dims.scale.toLocaleString()}（2cm方眼=${dims.scale*20/1000}m）　/　CP数 ${cps.length}　/　総距離 ${totalKm} km　/　累計上り +${up.toFixed(0)}m・下り ${down.toFixed(0)}m${author ? '　/　作成者 ' + author : ''}　/　作成 ${dateStr}</div>
   <table>
     <thead><tr><th>CP</th><th>地図</th><th>座標</th><th>区間距離(km)</th><th>累計距離(km)</th><th>標高(m)</th><th>標高差(m)</th><th>緯度経度</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>
   <div class="profile">
     <h2>ルート全体図</h2>
-    <div class="sub">中心の地図=CT、東=E・西=W・北=N・南=S。各マスが1枚の印刷地図。赤線がルート、番号付き赤点がCP。</div>
     ${overviewSvg}
   </div>
   <div class="profile">
@@ -2616,6 +2619,7 @@ function gatherState() {
     paper: { size: _v('paperSize'), orient: _v('paperOrient'), scale: _v('paperScale') },
     layer: layerBtn ? layerBtn.dataset.layer : 'gsi_std',
     title: _v('titleInput'),
+    author: _v('authorInput'),
     grid: { on: _c('ovGrid'), axis: _c('ovAxisLabel'), color: _v('gridColor'), style: _v('gridStyle'), width: _v('gridWidth') },
     mag: { on: _c('ovMag'), color: _v('magColor'), style: _v('magStyle'), width: _v('magWidth'), spacing: _v('magSpacing') },
     misc: { scaleBar: _c('ovScale'), centerPin: _c('ovPin'), routeOverlay: _c('ovRoute') },
@@ -2655,6 +2659,7 @@ function applyState(s) {
   // 設定
   if (s.paper) { _setV('paperSize', s.paper.size); _setV('paperOrient', s.paper.orient); _setV('paperScale', s.paper.scale); }
   _setV('titleInput', s.title || '');
+  _setV('authorInput', s.author || '');
   if (s.grid) { _setC('ovGrid', s.grid.on); _setC('ovAxisLabel', s.grid.axis); _setV('gridColor', s.grid.color); _setV('gridStyle', s.grid.style); _setV('gridWidth', s.grid.width); }
   if (s.mag) { _setC('ovMag', s.mag.on); _setV('magColor', s.mag.color); _setV('magStyle', s.mag.style); _setV('magWidth', s.mag.width); _setV('magSpacing', s.mag.spacing); }
   if (s.misc) { _setC('ovScale', s.misc.scaleBar); _setC('ovPin', s.misc.centerPin); _setC('ovRoute', s.misc.routeOverlay); }
