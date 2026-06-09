@@ -820,6 +820,41 @@
           <button class="secondary" id="btnListCSV">CSV</button>
         </div>
         <div class="hint" style="margin-top:8px">座標は印刷地図の軸番号（左下00基準）と一致するXnnnYnnn形式。距離はチェックポイント間（ルート沿い）です。中心が未設定だと座標は算出できないため、先に「地図」タブで中心を設定してください。</div>
+      </div>
+
+      <div class="section">
+        <h2>ルートの表示スタイル</h2>
+        <div class="style-row">
+          <label>ルート線</label>
+          <div class="color-with-reset">
+            <input type="color" id="routeLineColor" value="#C22047">
+            <button class="reset-btn" data-target="routeLineColor" data-default="#C22047" title="デフォルト色に戻す" aria-label="デフォルト色に戻す">↺</button>
+          </div>
+        </div>
+        <div class="style-row">
+          <label>CP点</label>
+          <div class="color-with-reset">
+            <input type="color" id="routeCpColor" value="#C22047">
+            <button class="reset-btn" data-target="routeCpColor" data-default="#C22047" title="デフォルト色に戻す" aria-label="デフォルト色に戻す">↺</button>
+          </div>
+        </div>
+        <div class="style-row">
+          <label>通常ピン</label>
+          <div class="color-with-reset">
+            <input type="color" id="routePinColor" value="#00664B">
+            <button class="reset-btn" data-target="routePinColor" data-default="#00664B" title="デフォルト色に戻す" aria-label="デフォルト色に戻す">↺</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>保存・共有</h2>
+        <div class="actions">
+          <button class="secondary" id="btnExport">エクスポート</button>
+          <button class="secondary" id="btnImport">インポート</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+        <div class="hint">地図の中心・用紙/方眼/磁北線などの設定・ルート・色をまとめてJSONで保存／読込します。他の人と共有すれば、同じ地図・ルートを再現して出力できます。</div>
         <div class="actions" style="margin-top:12px">
           <button class="primary" id="btnRouteToPrint">印刷へ →</button>
         </div>
@@ -2050,6 +2085,20 @@ function setupRouteTab() {
   document.getElementById('btnRouteClear').addEventListener('click', clearRoute);
   document.getElementById('btnListCSV').addEventListener('click', exportRouteCSV);
   document.getElementById('btnListPrint').addEventListener('click', printCpList);
+  // ルート色の変更で地図上の表示を更新
+  ['routeLineColor', 'routeCpColor', 'routePinColor'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', refreshRoute);
+  });
+  document.querySelectorAll('.reset-btn').forEach(b => {
+    if (['routeLineColor', 'routeCpColor', 'routePinColor'].includes(b.dataset.target)) {
+      b.addEventListener('click', () => setTimeout(refreshRoute, 0));
+    }
+  });
+  // エクスポート / インポート
+  document.getElementById('btnExport').addEventListener('click', exportState);
+  document.getElementById('btnImport').addEventListener('click', () => document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change', handleImportFile);
   // リスト並び替え
   if (window.Sortable) {
     Sortable.create(document.getElementById('routeList'), {
@@ -2078,18 +2127,28 @@ function routeDist(a, b) {
   return 2 * R * Math.asin(Math.sqrt(x));
 }
 
+function routeColors() {
+  const v = (id, d) => { const el = document.getElementById(id); return (el && el.value) ? el.value : d; };
+  return {
+    line: v('routeLineColor', '#C22047'),
+    cp:   v('routeCpColor', '#C22047'),
+    pin:  v('routePinColor', '#00664B'),
+  };
+}
 function googleRouteIcon(p) {
+  const col = routeColors();
   return {
     path: google.maps.SymbolPath.CIRCLE,
     scale: p.isCP ? 9 : 5,
-    fillColor: p.isCP ? '#C22047' : '#00664B',
+    fillColor: p.isCP ? col.cp : col.pin,
     fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2,
   };
 }
 function leafRouteStyle(p) {
+  const col = routeColors();
   return {
     radius: p.isCP ? 8 : 5,
-    fillColor: p.isCP ? '#C22047' : '#00664B',
+    fillColor: p.isCP ? col.cp : col.pin,
     fillOpacity: 1, color: '#fff', weight: 2,
   };
 }
@@ -2141,14 +2200,14 @@ function drawRouteLine() {
     if (routePolyline) routePolyline.setMap(null);
     if (path.length >= 2) {
       routePolyline = new google.maps.Polyline({
-        path, map, strokeColor: '#C22047', strokeOpacity: 0.9, strokeWeight: 3,
+        path, map, strokeColor: routeColors().line, strokeOpacity: 0.9, strokeWeight: 3,
       });
     }
   } else if (mapMode === 'leaflet' && leafState) {
     if (routeLeafLine) leafState.map.removeLayer(routeLeafLine);
     if (path.length >= 2) {
       routeLeafLine = L.polyline(path.map(p => [p.lat, p.lng]), {
-        color: '#C22047', weight: 3, opacity: 0.9,
+        color: routeColors().line, weight: 3, opacity: 0.9,
       }).addTo(leafState.map);
     }
   }
@@ -2394,19 +2453,20 @@ function buildOverviewSvg() {
     cells += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${cw.toFixed(1)}" height="${ch.toFixed(1)}" fill="${isCT ? 'rgba(0,102,75,0.08)' : '#fff'}" stroke="#bbb" stroke-width="1"/>`;
     cells += `<text x="${(x + 5).toFixed(1)}" y="${(y + 15).toFixed(1)}" font-size="12" font-weight="700" fill="${isCT ? '#00664B' : '#999'}">${mapLabel(c, r)}</text>`;
   }
+  const col = routeColors();
   const line = pts.map(q => `${X(q.Em).toFixed(1)},${Y(q.Nm).toFixed(1)}`).join(' ');
   let marks = '', cp = 0;
   pts.forEach(q => {
     const x = X(q.Em), y = Y(q.Nm);
     if (q.isCP) {
       cp++;
-      marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" fill="#C22047" stroke="#fff" stroke-width="1.5"/>`;
+      marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" fill="${col.cp}" stroke="#fff" stroke-width="1.5"/>`;
       marks += `<text x="${x.toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">${cp}</text>`;
     } else {
-      marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.4" fill="#00664B"/>`;
+      marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.4" fill="${col.pin}"/>`;
     }
   });
-  const polyline = pts.length >= 2 ? `<polyline points="${line}" fill="none" stroke="#C22047" stroke-width="2.5" stroke-linejoin="round"/>` : '';
+  const polyline = pts.length >= 2 ? `<polyline points="${line}" fill="none" stroke="${col.line}" stroke-width="2.5" stroke-linejoin="round"/>` : '';
   return `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,'Hiragino Sans','Yu Gothic','Meiryo',sans-serif">
     ${cells}
     ${polyline}
@@ -2533,16 +2593,114 @@ async function printCpList() {
 }
 
 // 印刷キャンバスへルートを重ねる（ピンは小さく、CPのみ番号）
+// ============================================================
+// エクスポート / インポート（共有用）
+// ============================================================
+function _v(id) { const el = document.getElementById(id); return el ? el.value : undefined; }
+function _c(id) { const el = document.getElementById(id); return el ? el.checked : undefined; }
+function _setV(id, v) { const el = document.getElementById(id); if (el && v != null) el.value = v; }
+function _setC(id, v) { const el = document.getElementById(id); if (el && v != null) el.checked = !!v; }
+
+function gatherState() {
+  let zoom = null;
+  if (mapMode === 'google' && map) zoom = map.getZoom();
+  else if (mapMode === 'leaflet' && leafState) zoom = leafState.map.getZoom();
+  const layerBtn = document.querySelector('#displayToggle button.active');
+  return {
+    app: 'bs-tsukuba-hiking-map', version: 1, savedAt: new Date().toISOString(),
+    center: centerLatLng, origin: originLatLng, zoom,
+    paper: { size: _v('paperSize'), orient: _v('paperOrient'), scale: _v('paperScale') },
+    layer: layerBtn ? layerBtn.dataset.layer : 'gsi_std',
+    title: _v('titleInput'),
+    grid: { on: _c('ovGrid'), axis: _c('ovAxisLabel'), color: _v('gridColor'), style: _v('gridStyle'), width: _v('gridWidth') },
+    mag: { on: _c('ovMag'), color: _v('magColor'), style: _v('magStyle'), width: _v('magWidth'), spacing: _v('magSpacing') },
+    misc: { scaleBar: _c('ovScale'), centerPin: _c('ovPin'), routeOverlay: _c('ovRoute') },
+    routeStyle: { line: _v('routeLineColor'), cp: _v('routeCpColor'), pin: _v('routePinColor') },
+    pins: routePins.map(p => ({ lat: p.lat, lng: p.lng, isCP: p.isCP })),
+  };
+}
+
+function exportState() {
+  const data = gatherState();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const t = (_v('titleInput') || 'hiking-route').replace(/[\\/:*?"<>|\s]/g, '_');
+  a.download = `${t}_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+function handleImportFile(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const s = JSON.parse(reader.result);
+      applyState(s);
+    } catch (err) {
+      alert('読み込みに失敗しました: ' + err.message);
+    }
+    e.target.value = ''; // 同じファイルを連続で選べるように
+  };
+  reader.readAsText(file);
+}
+
+function applyState(s) {
+  if (!s || typeof s !== 'object') { alert('無効なファイルです'); return; }
+  // 設定
+  if (s.paper) { _setV('paperSize', s.paper.size); _setV('paperOrient', s.paper.orient); _setV('paperScale', s.paper.scale); }
+  _setV('titleInput', s.title || '');
+  if (s.grid) { _setC('ovGrid', s.grid.on); _setC('ovAxisLabel', s.grid.axis); _setV('gridColor', s.grid.color); _setV('gridStyle', s.grid.style); _setV('gridWidth', s.grid.width); }
+  if (s.mag) { _setC('ovMag', s.mag.on); _setV('magColor', s.mag.color); _setV('magStyle', s.mag.style); _setV('magWidth', s.mag.width); _setV('magSpacing', s.mag.spacing); }
+  if (s.misc) { _setC('ovScale', s.misc.scaleBar); _setC('ovPin', s.misc.centerPin); _setC('ovRoute', s.misc.routeOverlay); }
+  if (s.routeStyle) { _setV('routeLineColor', s.routeStyle.line); _setV('routeCpColor', s.routeStyle.cp); _setV('routePinColor', s.routeStyle.pin); }
+  // 地図種別トグル
+  if (s.layer) {
+    const b = document.querySelector(`#displayToggle button[data-layer="${s.layer}"]`);
+    if (b && !b.disabled) b.click();
+  }
+  // 既存ルートを消去
+  routePins.forEach(p => { if (p.gmarker) p.gmarker.setMap(null); if (p.lmarker && leafState) leafState.map.removeLayer(p.lmarker); });
+  routePins.length = 0;
+  if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
+  if (routeLeafLine && leafState) { leafState.map.removeLayer(routeLeafLine); routeLeafLine = null; }
+  // 中心・原点
+  if (s.origin) originLatLng = { lat: s.origin.lat, lng: s.origin.lng };
+  if (s.center) {
+    centerLatLng = { lat: s.center.lat, lng: s.center.lng };
+    currentAccuracy = { level: 'CLICK', partial: false, source: 'インポート' };
+    updateCenterMarker(centerLatLng);
+    refreshCenterUI();
+    if (mapMode === 'google' && map) {
+      map.setCenter(centerLatLng);
+      if (s.zoom) map.setZoom(Math.floor(s.zoom)); else fitMapToOutputArea();
+    } else if (mapMode === 'leaflet' && leafState) {
+      leafState.map.setView([centerLatLng.lat, centerLatLng.lng], s.zoom ? Math.floor(s.zoom) : 15);
+    }
+  }
+  // ピン
+  (s.pins || []).forEach(pp => {
+    const pin = { lat: pp.lat, lng: pp.lng, isCP: !!pp.isCP, cpNo: null, gmarker: null, lmarker: null };
+    routePins.push(pin);
+    createRouteMarker(pin);
+  });
+  refreshRoute();
+  document.getElementById('status').className = 'ok';
+  document.getElementById('status').textContent = '✓ インポートしました';
+}
+
 function drawRouteOverlay(ctx, mapX, mapY, mapWpx, mapHpx, opts) {
   if (!routePins.length) return;
   const proj = makeProj(opts.centerLat, opts.centerLng, opts.mapWmm, opts.mapHmm, opts.scale);
+  const col = routeColors();
   ctx.save();
   ctx.beginPath(); ctx.rect(mapX, mapY, mapWpx, mapHpx); ctx.clip();
   ctx.setLineDash([]);
 
   // ルート線
   if (routePins.length >= 2) {
-    ctx.strokeStyle = 'rgba(194,32,71,0.9)';
+    ctx.strokeStyle = hexToRgba(col.line, 0.9);
     ctx.lineWidth = mmToPx(0.5);
     ctx.lineJoin = 'round';
     ctx.beginPath();
@@ -2563,7 +2721,7 @@ function drawRouteOverlay(ctx, mapX, mapY, mapWpx, mapHpx, opts) {
     const X = mapX + pt.x, Y = mapY + pt.y;
     const r = mmToPx(1.7);
     ctx.beginPath(); ctx.arc(X, Y, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#C22047'; ctx.fill();
+    ctx.fillStyle = col.cp; ctx.fill();
     ctx.lineWidth = mmToPx(0.3); ctx.strokeStyle = '#fff'; ctx.stroke();
     ctx.fillStyle = '#fff';
     ctx.font = `700 ${mmToPx(2)}px "Hiragino Sans","Yu Gothic","Meiryo",sans-serif`;
