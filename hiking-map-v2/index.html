@@ -2242,6 +2242,60 @@ async function exportRouteCSV() {
   } finally { btn.disabled = false; btn.textContent = old; }
 }
 
+// 標高断面図SVG（X=距離km, Y=標高m, CPごとに点）
+function buildElevSvg(cps) {
+  const valid = cps.filter(c => c.elev != null);
+  if (valid.length < 2) {
+    return '<div class="note">標高が取得できたチェックポイントが2点未満のため、断面図を描画できませんでした。</div>';
+  }
+  const W = 760, H = 380, mL = 58, mR = 22, mT = 22, mB = 48;
+  const plotW = W - mL - mR, plotH = H - mT - mB;
+  const xMax = Math.max(...cps.map(c => c.cum), 1);
+  let yMin = Math.min(...valid.map(c => c.elev));
+  let yMax = Math.max(...valid.map(c => c.elev));
+  if (yMax === yMin) { yMax += 10; yMin -= 10; }
+  const pad = (yMax - yMin) * 0.1; yMin -= pad; yMax += pad;
+  const X = m => mL + (m / xMax) * plotW;
+  const Y = e => mT + (1 - (e - yMin) / (yMax - yMin)) * plotH;
+
+  let grid = '';
+  const yTicks = 5;
+  for (let i = 0; i <= yTicks; i++) {
+    const e = yMin + (yMax - yMin) * i / yTicks;
+    const yy = Y(e).toFixed(1);
+    grid += `<line x1="${mL}" y1="${yy}" x2="${mL + plotW}" y2="${yy}" stroke="#e2e2e2" stroke-width="1"/>`;
+    grid += `<text x="${mL - 7}" y="${(Y(e) + 3).toFixed(1)}" text-anchor="end" font-size="11" fill="#555">${Math.round(e)}</text>`;
+  }
+  const xTicks = 6;
+  for (let i = 0; i <= xTicks; i++) {
+    const m = xMax * i / xTicks;
+    const xx = X(m).toFixed(1);
+    grid += `<line x1="${xx}" y1="${mT}" x2="${xx}" y2="${mT + plotH}" stroke="#f0f0f0" stroke-width="1"/>`;
+    grid += `<text x="${xx}" y="${mT + plotH + 16}" text-anchor="middle" font-size="11" fill="#555">${(m / 1000).toFixed(1)}</text>`;
+  }
+
+  const linePts = valid.map(c => `${X(c.cum).toFixed(1)},${Y(c.elev).toFixed(1)}`).join(' ');
+  const areaPts = `${X(valid[0].cum).toFixed(1)},${(mT + plotH).toFixed(1)} ` + linePts +
+    ` ${X(valid[valid.length-1].cum).toFixed(1)},${(mT + plotH).toFixed(1)}`;
+  let marks = '';
+  valid.forEach(c => {
+    const x = X(c.cum), y = Y(c.elev);
+    marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" fill="#C22047" stroke="#fff" stroke-width="1"/>`;
+    marks += `<text x="${x.toFixed(1)}" y="${(y - 8).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#C22047">${c.no}</text>`;
+  });
+
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,'Hiragino Sans','Yu Gothic','Meiryo',sans-serif">
+    ${grid}
+    <polygon points="${areaPts}" fill="rgba(0,102,75,0.10)"/>
+    <polyline points="${linePts}" fill="none" stroke="#00664B" stroke-width="2" stroke-linejoin="round"/>
+    ${marks}
+    <line x1="${mL}" y1="${mT}" x2="${mL}" y2="${mT + plotH}" stroke="#333" stroke-width="1"/>
+    <line x1="${mL}" y1="${mT + plotH}" x2="${mL + plotW}" y2="${mT + plotH}" stroke="#333" stroke-width="1"/>
+    <text x="${mL + plotW / 2}" y="${H - 8}" text-anchor="middle" font-size="12" fill="#333">距離 (km)</text>
+    <text x="14" y="${mT + plotH / 2}" text-anchor="middle" font-size="12" fill="#333" transform="rotate(-90 14 ${mT + plotH / 2})">標高 (m)</text>
+  </svg>`;
+}
+
 async function printCpList() {
   if (!getCpList().length) { alert('チェックポイントがありません。ピンをクリックしてCPに設定してください。'); return; }
   const btn = document.getElementById('btnListPrint');
@@ -2276,6 +2330,10 @@ async function printCpList() {
   td.m{font-family:"SF Mono",Menlo,Consolas,monospace;font-weight:600;}
   td.r{text-align:right;font-variant-numeric:tabular-nums;}
   td.s{font-family:"SF Mono",Menlo,Consolas,monospace;color:#666;font-size:11px;}
+  .profile{page-break-before:always;margin-top:28px;}
+  .profile h2{font-size:16px;margin:0 0 4px;}
+  .profile .sub{font-size:11px;color:#666;margin-bottom:10px;}
+  svg{display:block;width:100%;max-width:760px;}
   @media print{body{margin:12mm;}}
 </style></head><body>
   <h1>${title} ／ チェックポイント一覧</h1>
@@ -2284,6 +2342,11 @@ async function printCpList() {
     <thead><tr><th>CP</th><th>座標</th><th>区間距離(km)</th><th>累計距離(km)</th><th>標高(m)</th><th>標高差(m)</th><th>緯度経度</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>
+  <div class="profile">
+    <h2>標高断面図</h2>
+    <div class="sub">横軸=累計距離(km)／縦軸=標高(m)。各点はチェックポイント（番号付き）。</div>
+    ${buildElevSvg(cps)}
+  </div>
   <script>window.onload=function(){window.print();};<\/script>
 </body></html>`;
   const w = window.open('', '_blank');
