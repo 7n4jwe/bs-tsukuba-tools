@@ -2787,13 +2787,27 @@ function drawLegendIcon(ctx, kind, cx, cy, s) {
     case 'koban': glyph('✕', '#000', 1.0); break;
     case 'health': glyph('⊕'); break;
     case 'school': glyph('文', '#000', 1.05); break;
-    case 'highschool':
-      ctx.lineWidth=lw; ctx.beginPath(); ctx.arc(cx,cy,s*0.72,0,7); ctx.stroke(); glyph('文','#000',0.8); break;
-    case 'post': // 郵便局 〒を○で囲む
-      ctx.lineWidth=lw; ctx.beginPath(); ctx.arc(cx,cy,s*0.72,0,7); ctx.stroke(); glyph('〒','#000',0.78); break;
+    case 'highschool': // 高等学校（文を○で囲む）
+      ctx.lineWidth=lw; ctx.beginPath(); ctx.arc(cx,cy,s*0.62,0,7); ctx.stroke(); glyph('文','#000',0.62); break;
+    case 'post': // 郵便局（〒を○で囲む）
+      ctx.lineWidth=lw; ctx.beginPath(); ctx.arc(cx,cy,s*0.62,0,7); ctx.stroke(); glyph('〒','#000',0.58); break;
     case 'temple': glyph('卍', '#000', 1.05); break;
     case 'onsen': glyph('♨', '#000', 1.15); break;
-    case 'anchor': glyph('⚓', '#000', 1.15); break;
+    case 'anchor': // 港湾・漁港（いかり）白黒で描画
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1, s*0.12);
+      ctx.beginPath(); ctx.moveTo(cx, cy-s*0.45); ctx.lineTo(cx, cy+s*0.62); ctx.stroke(); // shank
+      ctx.lineWidth = Math.max(1, s*0.09);
+      ctx.beginPath(); ctx.arc(cx, cy-s*0.6, s*0.16, 0, 7); ctx.stroke();                  // ring
+      ctx.lineWidth = Math.max(1, s*0.1);
+      ctx.beginPath(); ctx.moveTo(cx-s*0.34, cy-s*0.25); ctx.lineTo(cx+s*0.34, cy-s*0.25); ctx.stroke(); // stock
+      ctx.lineWidth = Math.max(1, s*0.12);
+      ctx.beginPath(); ctx.arc(cx, cy+s*0.1, s*0.5, Math.PI*0.12, Math.PI*0.88); ctx.stroke(); // arms
+      ctx.lineWidth = Math.max(1, s*0.1);
+      ctx.beginPath();
+      ctx.moveTo(cx-s*0.49, cy+s*0.36); ctx.lineTo(cx-s*0.62, cy+s*0.18);
+      ctx.moveTo(cx+s*0.49, cy+s*0.36); ctx.lineTo(cx+s*0.62, cy+s*0.18);
+      ctx.stroke(); ctx.lineCap='butt'; break;
     case 'shrine': // 神社 鳥居
       ctx.lineWidth=lw;
       ctx.beginPath();
@@ -2802,16 +2816,12 @@ function drawLegendIcon(ctx, kind, cx, cy, s) {
       ctx.moveTo(cx-s*0.38, cy-s*0.55); ctx.lineTo(cx-s*0.38, cy+s*0.6);
       ctx.moveTo(cx+s*0.38, cy-s*0.55); ctx.lineTo(cx+s*0.38, cy+s*0.6);
       ctx.stroke(); break;
-    case 'fire': // 消防署（さすまた）
-      ctx.lineWidth=lw; ctx.beginPath();
-      ctx.moveTo(cx, cy+s*0.7); ctx.lineTo(cx, cy);
-      ctx.moveTo(cx, cy); ctx.lineTo(cx-s*0.5, cy-s*0.5);
-      ctx.moveTo(cx, cy); ctx.lineTo(cx+s*0.5, cy-s*0.5);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx-s*0.5, cy-s*0.5); ctx.lineTo(cx-s*0.5, cy-s*0.15);
-      ctx.moveTo(cx+s*0.5, cy-s*0.5); ctx.lineTo(cx+s*0.5, cy-s*0.15);
-      ctx.stroke(); break;
+    case 'fire': // 消防署（さすまた＝Y字）
+      ctx.lineWidth=lw; ctx.lineCap='round'; ctx.beginPath();
+      ctx.moveTo(cx, cy+s*0.7); ctx.lineTo(cx, cy-s*0.05);
+      ctx.moveTo(cx, cy-s*0.05); ctx.lineTo(cx-s*0.55, cy-s*0.62);
+      ctx.moveTo(cx, cy-s*0.05); ctx.lineTo(cx+s*0.55, cy-s*0.62);
+      ctx.stroke(); ctx.lineCap='butt'; break;
     case 'court': // 裁判所（立て札・旗）
       ctx.lineWidth=lw; ctx.beginPath(); ctx.moveTo(cx-s*0.3, cy+s*0.6); ctx.lineTo(cx-s*0.3, cy-s*0.6); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(cx-s*0.3, cy-s*0.6); ctx.lineTo(cx+s*0.55, cy-s*0.35); ctx.lineTo(cx-s*0.3, cy-s*0.1); ctx.closePath(); ctx.fill(); break;
