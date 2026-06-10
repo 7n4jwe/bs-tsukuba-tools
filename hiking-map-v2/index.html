@@ -2831,13 +2831,14 @@ function drawLegendIcon(ctx, kind, cx, cy, s) {
     case 'hosp': // 病院（角丸＋十字）
       ctx.lineWidth=lw; ctx.strokeRect(cx-s*0.62, cy-s*0.62, s*1.24, s*1.24);
       ctx.beginPath(); ctx.moveTo(cx,cy-s*0.4); ctx.lineTo(cx,cy+s*0.4); ctx.moveTo(cx-s*0.4,cy); ctx.lineTo(cx+s*0.4,cy); ctx.stroke(); break;
-    case 'lighthouse': // 灯台（放射）
-      ctx.lineWidth=Math.max(1,s*0.08);
-      for(let a=0;a<8;a++){ const r1=s*0.25,r2=s*0.7,an=a*Math.PI/4; ctx.beginPath(); ctx.moveTo(cx+Math.cos(an)*r1,cy+Math.sin(an)*r1); ctx.lineTo(cx+Math.cos(an)*r2,cy+Math.sin(an)*r2); ctx.stroke(); }
-      ctx.beginPath(); ctx.arc(cx,cy,s*0.18,0,7); ctx.fill(); break;
-    case 'windmill': // 風車
-      ctx.lineWidth=lw; ctx.beginPath(); ctx.moveTo(cx,cy+s*0.7); ctx.lineTo(cx,cy-s*0.1); ctx.stroke();
-      for(let a=0;a<3;a++){ const an=-Math.PI/2+a*2*Math.PI/3; ctx.beginPath(); ctx.moveTo(cx,cy-s*0.1); ctx.lineTo(cx+Math.cos(an)*s*0.6, cy-s*0.1+Math.sin(an)*s*0.6); ctx.stroke(); } break;
+    case 'lighthouse': // 灯台（光を放つ点）
+      ctx.lineWidth=Math.max(1,s*0.09);
+      for(let a=0;a<8;a++){ const an=a*Math.PI/4; const r2=(a%2===0)?s*0.78:s*0.48; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(an)*r2,cy+Math.sin(an)*r2); ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(cx,cy,s*0.16,0,7); ctx.fill(); break;
+    case 'windmill': // 風車（3枚羽根）
+      ctx.lineWidth=Math.max(1,s*0.12);
+      for(let a=0;a<3;a++){ const an=-Math.PI/2+a*2*Math.PI/3; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(an)*s*0.72, cy+Math.sin(an)*s*0.72); ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(cx,cy,s*0.14,0,7); ctx.fill(); break;
     case 'chimney': // 煙突
       ctx.lineWidth=lw; ctx.strokeRect(cx-s*0.2, cy-s*0.5, s*0.4, s*1.1);
       ctx.beginPath(); ctx.arc(cx+s*0.05, cy-s*0.65, s*0.12, 0, 7); ctx.stroke(); break;
