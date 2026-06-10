@@ -877,6 +877,7 @@
         <label class="row"><input type="checkbox" id="ovRoute" checked> ルート（線・CP）を重ねる</label>
         <label class="row"><input type="checkbox" id="ovScale" checked> 距離スケール</label>
         <label class="row"><input type="checkbox" id="ovPin"> 中心ピン</label>
+        <label class="row"><input type="checkbox" id="ovLegend"> 凡例（地図記号）※地図エリアを縮小</label>
       </div>
 
       <div class="section">
@@ -1217,7 +1218,7 @@ function setupCommonUI() {
   });
 
   // 用紙設定の変更で表示範囲を再フィット
-  ['paperSize', 'paperOrient', 'paperScale', 'gridCell', 'ovGrid', 'ovAxisLabel'].forEach(id => {
+  ['paperSize', 'paperOrient', 'paperScale', 'gridCell', 'ovGrid', 'ovAxisLabel', 'ovLegend'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', () => {
       if (centerLatLng) fitMapToOutputArea();
@@ -1261,7 +1262,7 @@ function getOutputMapDimensions() {
   const useAxis = ovGridChecked && ovAxisChecked;
   const leftMargin = MARGIN_MM + (useAxis ? AXIS_LABEL_MM : 0);
   const bottomExtra = useAxis ? AXIS_LABEL_MM : 0;
-  const mapWraw = paperW - leftMargin - MARGIN_MM;
+  const mapWraw = paperW - leftMargin - MARGIN_MM - legendReserveMm();
   const mapHraw = paperH - MARGIN_MM * 2 - HEADER_MM - FOOTER_MM - bottomExtra;
   const cellMm = gridCellMm();
   const mapWmm = Math.floor(mapWraw / cellMm) * cellMm;
@@ -1523,6 +1524,12 @@ const PAPER = {
   A3: { w: 297, h: 420 },
 };
 
+// 凡例（地図記号）レイアウト
+const LEGEND_W_MM = 58;
+const LEGEND_GAP_MM = 3;
+function legendOn() { const el = document.getElementById('ovLegend'); return !!(el && el.checked); }
+function legendReserveMm() { return legendOn() ? (LEGEND_W_MM + LEGEND_GAP_MM) : 0; }
+
 // ============================================================
 // Web Mercator変換
 // ============================================================
@@ -1689,7 +1696,8 @@ async function buildPrintCanvas(printCenter, mapNo) {
   const leftMargin = MARGIN_MM + (ovGrid && ovAxisLabel ? AXIS_LABEL_MM : 0);
   const bottomExtra = ovGrid && ovAxisLabel ? AXIS_LABEL_MM : 0;
 
-  const mapW = paperW - leftMargin - MARGIN_MM;
+  const ovLegend = legendOn();
+  const mapW = paperW - leftMargin - MARGIN_MM - legendReserveMm();
   const mapH = paperH - MARGIN_MM * 2 - HEADER_MM - FOOTER_MM - bottomExtra;
 
   // 方眼の整数倍に揃える（軸番号の見映え向上）
@@ -1767,6 +1775,12 @@ async function buildPrintCanvas(printCenter, mapNo) {
     lat: C.lat, lng: C.lng,
     decl, scale, tileKey, showScaleBar: ovScale, author,
   });
+
+  // 凡例（地図記号）
+  if (ovLegend) {
+    drawLegend(ctx, paperW - MARGIN_MM - LEGEND_W_MM, MARGIN_MM + HEADER_MM,
+      LEGEND_W_MM, paperH - MARGIN_MM * 2 - HEADER_MM - FOOTER_MM);
+  }
 
   return { canvas, paperW, paperH };
 }
@@ -2632,7 +2646,7 @@ function gatherState() {
     author: _v('authorInput'),
     grid: { on: _c('ovGrid'), axis: _c('ovAxisLabel'), color: _v('gridColor'), style: _v('gridStyle'), width: _v('gridWidth') },
     mag: { on: _c('ovMag'), color: _v('magColor'), style: _v('magStyle'), width: _v('magWidth'), spacing: _v('magSpacing') },
-    misc: { scaleBar: _c('ovScale'), centerPin: _c('ovPin'), routeOverlay: _c('ovRoute') },
+    misc: { scaleBar: _c('ovScale'), centerPin: _c('ovPin'), routeOverlay: _c('ovRoute'), legend: _c('ovLegend'), gridCell: _v('gridCell') },
     routeStyle: { line: _v('routeLineColor'), cp: _v('routeCpColor'), pin: _v('routePinColor') },
     pins: routePins.map(p => ({ lat: p.lat, lng: p.lng, isCP: p.isCP })),
   };
@@ -2672,7 +2686,7 @@ function applyState(s) {
   _setV('authorInput', s.author || '');
   if (s.grid) { _setC('ovGrid', s.grid.on); _setC('ovAxisLabel', s.grid.axis); _setV('gridColor', s.grid.color); _setV('gridStyle', s.grid.style); _setV('gridWidth', s.grid.width); }
   if (s.mag) { _setC('ovMag', s.mag.on); _setV('magColor', s.mag.color); _setV('magStyle', s.mag.style); _setV('magWidth', s.mag.width); _setV('magSpacing', s.mag.spacing); }
-  if (s.misc) { _setC('ovScale', s.misc.scaleBar); _setC('ovPin', s.misc.centerPin); _setC('ovRoute', s.misc.routeOverlay); }
+  if (s.misc) { _setC('ovScale', s.misc.scaleBar); _setC('ovPin', s.misc.centerPin); _setC('ovRoute', s.misc.routeOverlay); _setC('ovLegend', s.misc.legend); if (s.misc.gridCell) _setV('gridCell', s.misc.gridCell); }
   if (s.routeStyle) { _setV('routeLineColor', s.routeStyle.line); _setV('routeCpColor', s.routeStyle.cp); _setV('routePinColor', s.routeStyle.pin); }
   // 地図種別トグル
   if (s.layer) {
@@ -2707,6 +2721,231 @@ function applyState(s) {
   refreshRoute();
   document.getElementById('status').className = 'ok';
   document.getElementById('status').textContent = '✓ インポートしました';
+}
+
+// ============================================================
+// 凡例（地図記号）— 国土地理院の地形図記号を独自に再描画
+// ============================================================
+function drawLegendIcon(ctx, kind, cx, cy, s) {
+  ctx.save();
+  ctx.strokeStyle = '#000'; ctx.fillStyle = '#000';
+  ctx.setLineDash([]); ctx.lineCap = 'butt';
+  const hl = s * 1.35;               // 線記号の半長
+  const lw = Math.max(1, s * 0.10);
+  const glyph = (ch, col, scale) => {
+    ctx.fillStyle = col || '#000';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${(scale || 1.25) * s}px "Hiragino Sans","Yu Gothic","Meiryo",sans-serif`;
+    ctx.fillText(ch, cx, cy);
+  };
+  const hlineDash = (dash, width, col) => {
+    ctx.strokeStyle = col || '#000'; ctx.lineWidth = width || lw; ctx.setLineDash(dash || []);
+    ctx.beginPath(); ctx.moveTo(cx - hl, cy); ctx.lineTo(cx + hl, cy); ctx.stroke(); ctx.setLineDash([]);
+  };
+  switch (kind) {
+    // --- 基準点 ---
+    case 'tri': // 三角点
+      ctx.lineWidth = lw; ctx.beginPath();
+      ctx.moveTo(cx, cy - s*0.7); ctx.lineTo(cx + s*0.7, cy + s*0.55); ctx.lineTo(cx - s*0.7, cy + s*0.55); ctx.closePath(); ctx.stroke(); break;
+    case 'etri': // 電子基準点（三角点＋上に小三角）
+      ctx.lineWidth = lw; ctx.beginPath();
+      ctx.moveTo(cx, cy - s*0.45); ctx.lineTo(cx + s*0.7, cy + s*0.6); ctx.lineTo(cx - s*0.7, cy + s*0.6); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, cy - s*0.95); ctx.lineTo(cx + s*0.28, cy - s*0.5); ctx.lineTo(cx - s*0.28, cy - s*0.5); ctx.closePath(); ctx.stroke(); break;
+    case 'sq': // 水準点（四角＋中央点）
+      ctx.lineWidth = lw; ctx.strokeRect(cx - s*0.6, cy - s*0.6, s*1.2, s*1.2);
+      ctx.beginPath(); ctx.arc(cx, cy, s*0.14, 0, 7); ctx.fill(); break;
+    case 'dot': // 標高点
+      ctx.beginPath(); ctx.arc(cx, cy, s*0.22, 0, 7); ctx.fill(); break;
+    // --- 道路・鉄道 ---
+    case 'road2': // 2車線以上（二重線）
+      ctx.strokeStyle='#000'; ctx.lineWidth=lw;
+      ctx.beginPath(); ctx.moveTo(cx-hl,cy-s*0.28); ctx.lineTo(cx+hl,cy-s*0.28);
+      ctx.moveTo(cx-hl,cy+s*0.28); ctx.lineTo(cx+hl,cy+s*0.28); ctx.stroke(); break;
+    case 'road1': hlineDash([], lw); break; // 1車線
+    case 'roadFoot': hlineDash([s*0.5, s*0.4], Math.max(1,s*0.08)); break; // 徒歩道
+    case 'roadNat': // 国道（赤）
+      hlineDash([], s*0.34, '#C2402a'); break;
+    case 'roadExp': // 高速道路（緑・太）
+      hlineDash([], s*0.5, '#1f7a4d'); break;
+    case 'railJR': // 普通鉄道(JR) 線＋枕木
+      ctx.strokeStyle='#000'; ctx.lineWidth=Math.max(1,s*0.12);
+      ctx.beginPath(); ctx.moveTo(cx-hl,cy); ctx.lineTo(cx+hl,cy); ctx.stroke();
+      ctx.lineWidth=Math.max(1,s*0.08);
+      for(let t=-hl+s*0.3;t<=hl;t+=s*0.45){ ctx.beginPath(); ctx.moveTo(cx+t,cy-s*0.3); ctx.lineTo(cx+t,cy+s*0.3); ctx.stroke(); } break;
+    case 'railPriv': hlineDash([], Math.max(1,s*0.16)); break; // 私鉄
+    case 'railSub': hlineDash([s*0.5,s*0.35], Math.max(1,s*0.12)); break; // 地下鉄
+    // --- 境界・その他線 ---
+    case 'bdyPref': hlineDash([s*0.9,s*0.3,s*0.12,s*0.3], lw); break; // 都府県界
+    case 'bdyCity': hlineDash([s*0.6,s*0.25,s*0.12,s*0.25], lw); break; // 市区町村界
+    case 'power': // 送電線
+      hlineDash([], lw);
+      ctx.beginPath(); ctx.arc(cx, cy, s*0.16, 0, 7); ctx.fill(); break;
+    // --- 施設（グリフ流用） ---
+    case 'cityhall': glyph('◎'); break;
+    case 'townhall': glyph('○'); break;
+    case 'police': glyph('⊗'); break;
+    case 'koban': glyph('✕', '#000', 1.0); break;
+    case 'health': glyph('⊕'); break;
+    case 'school': glyph('文', '#000', 1.05); break;
+    case 'highschool':
+      ctx.lineWidth=lw; ctx.beginPath(); ctx.arc(cx,cy,s*0.72,0,7); ctx.stroke(); glyph('文','#000',0.8); break;
+    case 'post': // 郵便局 〒を○で囲む
+      ctx.lineWidth=lw; ctx.beginPath(); ctx.arc(cx,cy,s*0.72,0,7); ctx.stroke(); glyph('〒','#000',0.78); break;
+    case 'temple': glyph('卍', '#000', 1.05); break;
+    case 'onsen': glyph('♨', '#000', 1.15); break;
+    case 'anchor': glyph('⚓', '#000', 1.15); break;
+    case 'shrine': // 神社 鳥居
+      ctx.lineWidth=lw;
+      ctx.beginPath();
+      ctx.moveTo(cx-s*0.6, cy-s*0.55); ctx.lineTo(cx+s*0.6, cy-s*0.55); // 笠木
+      ctx.moveTo(cx-s*0.5, cy-s*0.3); ctx.lineTo(cx+s*0.5, cy-s*0.3);   // 貫
+      ctx.moveTo(cx-s*0.38, cy-s*0.55); ctx.lineTo(cx-s*0.38, cy+s*0.6);
+      ctx.moveTo(cx+s*0.38, cy-s*0.55); ctx.lineTo(cx+s*0.38, cy+s*0.6);
+      ctx.stroke(); break;
+    case 'fire': glyph('Ｙ', '#000', 1.0); break; // 消防署（刺股）
+    case 'hosp': // 病院（角丸＋十字）
+      ctx.lineWidth=lw; ctx.strokeRect(cx-s*0.62, cy-s*0.62, s*1.24, s*1.24);
+      ctx.beginPath(); ctx.moveTo(cx,cy-s*0.4); ctx.lineTo(cx,cy+s*0.4); ctx.moveTo(cx-s*0.4,cy); ctx.lineTo(cx+s*0.4,cy); ctx.stroke(); break;
+    case 'lighthouse': // 灯台（放射）
+      ctx.lineWidth=Math.max(1,s*0.08);
+      for(let a=0;a<8;a++){ const r1=s*0.25,r2=s*0.7,an=a*Math.PI/4; ctx.beginPath(); ctx.moveTo(cx+Math.cos(an)*r1,cy+Math.sin(an)*r1); ctx.lineTo(cx+Math.cos(an)*r2,cy+Math.sin(an)*r2); ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(cx,cy,s*0.18,0,7); ctx.fill(); break;
+    case 'windmill': // 風車
+      ctx.lineWidth=lw; ctx.beginPath(); ctx.moveTo(cx,cy+s*0.7); ctx.lineTo(cx,cy-s*0.1); ctx.stroke();
+      for(let a=0;a<3;a++){ const an=-Math.PI/2+a*2*Math.PI/3; ctx.beginPath(); ctx.moveTo(cx,cy-s*0.1); ctx.lineTo(cx+Math.cos(an)*s*0.6, cy-s*0.1+Math.sin(an)*s*0.6); ctx.stroke(); } break;
+    case 'chimney': // 煙突
+      ctx.lineWidth=lw; ctx.strokeRect(cx-s*0.2, cy-s*0.5, s*0.4, s*1.1);
+      ctx.beginPath(); ctx.arc(cx+s*0.05, cy-s*0.65, s*0.12, 0, 7); ctx.stroke(); break;
+    case 'castle': // 城跡（石垣）
+      ctx.lineWidth=lw; ctx.beginPath();
+      ctx.moveTo(cx-s*0.6, cy+s*0.5); ctx.lineTo(cx-s*0.6, cy-s*0.2); ctx.lineTo(cx-s*0.3,cy-s*0.2);
+      ctx.lineTo(cx-s*0.3,cy-s*0.5); ctx.lineTo(cx+s*0.0,cy-s*0.5); ctx.lineTo(cx+s*0.0,cy-s*0.2);
+      ctx.lineTo(cx+s*0.6,cy-s*0.2); ctx.lineTo(cx+s*0.6,cy+s*0.5); ctx.closePath(); ctx.stroke(); break;
+    case 'hist': // 史跡・名勝・天然記念物 ∴
+      for(const p of [[0,-0.4],[-0.4,0.35],[0.4,0.35]]){ ctx.beginPath(); ctx.arc(cx+p[0]*s, cy+p[1]*s, s*0.16, 0, 7); ctx.fill(); } break;
+    case 'monument': // 記念碑
+      ctx.lineWidth=lw; ctx.beginPath();
+      ctx.moveTo(cx-s*0.18, cy+s*0.5); ctx.lineTo(cx-s*0.12, cy-s*0.5); ctx.lineTo(cx+s*0.12,cy-s*0.5); ctx.lineTo(cx+s*0.18,cy+s*0.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-s*0.4, cy+s*0.5); ctx.lineTo(cx+s*0.4, cy+s*0.5); ctx.stroke(); break;
+    case 'power_st': // 発電所・変電所（歯車風）
+      ctx.lineWidth=Math.max(1,s*0.08); ctx.beginPath(); ctx.arc(cx,cy,s*0.45,0,7); ctx.stroke();
+      for(let a=0;a<8;a++){ const an=a*Math.PI/4; ctx.beginPath(); ctx.moveTo(cx+Math.cos(an)*s*0.45,cy+Math.sin(an)*s*0.45); ctx.lineTo(cx+Math.cos(an)*s*0.7,cy+Math.sin(an)*s*0.7); ctx.stroke(); } break;
+    case 'antenna': // 電波塔
+      ctx.lineWidth=lw; ctx.beginPath();
+      ctx.moveTo(cx-s*0.45,cy+s*0.6); ctx.lineTo(cx,cy-s*0.6); ctx.lineTo(cx+s*0.45,cy+s*0.6); ctx.stroke();
+      ctx.lineWidth=Math.max(1,s*0.07);
+      ctx.beginPath(); ctx.arc(cx,cy-s*0.6,s*0.22,-Math.PI*0.8,-Math.PI*0.2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx,cy-s*0.6,s*0.4,-Math.PI*0.8,-Math.PI*0.2); ctx.stroke(); break;
+    case 'library': // 図書館（開いた本）
+      ctx.lineWidth=lw; ctx.beginPath();
+      ctx.moveTo(cx,cy-s*0.45); ctx.quadraticCurveTo(cx-s*0.6,cy-s*0.55,cx-s*0.65,cy+s*0.35);
+      ctx.lineTo(cx,cy+s*0.2); ctx.lineTo(cx,cy-s*0.45);
+      ctx.moveTo(cx,cy-s*0.45); ctx.quadraticCurveTo(cx+s*0.6,cy-s*0.55,cx+s*0.65,cy+s*0.35);
+      ctx.lineTo(cx,cy+s*0.2); ctx.stroke(); break;
+    case 'museum': // 博物館（建物）
+      ctx.lineWidth=lw; ctx.beginPath();
+      ctx.moveTo(cx-s*0.7,cy-s*0.15); ctx.lineTo(cx,cy-s*0.6); ctx.lineTo(cx+s*0.7,cy-s*0.15); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-s*0.6,cy-s*0.15); ctx.lineTo(cx-s*0.6,cy+s*0.5);
+      ctx.moveTo(cx,cy-s*0.15); ctx.lineTo(cx,cy+s*0.5);
+      ctx.moveTo(cx+s*0.6,cy-s*0.15); ctx.lineTo(cx+s*0.6,cy+s*0.5);
+      ctx.moveTo(cx-s*0.75,cy+s*0.5); ctx.lineTo(cx+s*0.75,cy+s*0.5); ctx.stroke(); break;
+    case 'oldhome': // 老人ホーム（家＋杖）
+      ctx.lineWidth=lw; ctx.beginPath();
+      ctx.moveTo(cx-s*0.55,cy+s*0.5); ctx.lineTo(cx-s*0.55,cy-s*0.1); ctx.lineTo(cx,cy-s*0.55);
+      ctx.lineTo(cx+s*0.55,cy-s*0.1); ctx.lineTo(cx+s*0.55,cy+s*0.5); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx,cy+s*0.18,s*0.13,0,7); ctx.fill(); break;
+    // --- 植生 ---
+    case 'veg_ta': // 田
+      ctx.lineWidth=Math.max(1,s*0.1);
+      for(const dx of [-0.35,0.35]){ ctx.beginPath(); ctx.moveTo(cx+dx*s,cy+s*0.4); ctx.lineTo(cx+dx*s,cy-s*0.4); ctx.stroke(); } break;
+    case 'veg_hata': // 畑
+      ctx.lineWidth=Math.max(1,s*0.08);
+      for(const dx of [-0.4,0.0,0.4]){ ctx.beginPath(); ctx.moveTo(cx+dx*s-s*0.18,cy-s*0.15); ctx.lineTo(cx+dx*s,cy+s*0.15); ctx.lineTo(cx+dx*s+s*0.18,cy-s*0.15); ctx.stroke(); } break;
+    case 'veg_cha': // 茶畑
+      for(const p of [[0,-0.35],[-0.35,0.3],[0.35,0.3]]){ ctx.beginPath(); ctx.arc(cx+p[0]*s,cy+p[1]*s,s*0.13,0,7); ctx.fill(); } break;
+    case 'veg_orchard': // 果樹園
+      ctx.lineWidth=Math.max(1,s*0.08); ctx.beginPath(); ctx.arc(cx,cy-s*0.1,s*0.32,0,7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx,cy+s*0.22); ctx.lineTo(cx,cy+s*0.5); ctx.stroke(); break;
+    case 'veg_broad': // 広葉樹林
+      ctx.lineWidth=Math.max(1,s*0.08); ctx.beginPath(); ctx.arc(cx,cy,s*0.4,0,7); ctx.stroke(); break;
+    case 'veg_conifer': // 針葉樹林
+      ctx.lineWidth=Math.max(1,s*0.1); ctx.beginPath(); ctx.moveTo(cx-s*0.4,cy+s*0.4); ctx.lineTo(cx,cy-s*0.45); ctx.lineTo(cx+s*0.4,cy+s*0.4); ctx.stroke(); break;
+    case 'veg_bamboo': // 竹林
+      ctx.lineWidth=Math.max(1,s*0.1); ctx.beginPath(); ctx.moveTo(cx,cy+s*0.5); ctx.lineTo(cx,cy-s*0.5); ctx.stroke();
+      ctx.lineWidth=Math.max(1,s*0.07);
+      ctx.beginPath(); ctx.moveTo(cx,cy-s*0.2); ctx.lineTo(cx+s*0.3,cy-s*0.45); ctx.moveTo(cx,cy+s*0.05); ctx.lineTo(cx+s*0.3,cy-s*0.2); ctx.stroke(); break;
+    case 'veg_waste': // 荒地
+      ctx.lineWidth=Math.max(1,s*0.08);
+      for(const dx of [-0.35,0,0.35]){ ctx.beginPath(); ctx.moveTo(cx+dx*s,cy+s*0.4); ctx.lineTo(cx+dx*s,cy-s*0.1); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(cx-s*0.5,cy+s*0.42); ctx.lineTo(cx+s*0.5,cy+s*0.42); ctx.stroke(); break;
+    default: break;
+  }
+  ctx.restore();
+}
+
+function drawLegend(ctx, xMm, yMm, wMm, hMm) {
+  const X = mmToPx(xMm), Y = mmToPx(yMm), W = mmToPx(wMm), H = mmToPx(hMm);
+  ctx.save();
+  ctx.fillStyle = '#fff'; ctx.fillRect(X, Y, W, H);
+  ctx.strokeStyle = '#000'; ctx.lineWidth = mmToPx(0.3); ctx.setLineDash([]); ctx.strokeRect(X, Y, W, H);
+
+  // タイトル
+  ctx.fillStyle = '#000'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  ctx.font = `700 ${mmToPx(3.6)}px "Hiragino Sans","Yu Gothic",sans-serif`;
+  ctx.fillText('凡例', X + W / 2, Y + mmToPx(4.6));
+  ctx.font = `400 ${mmToPx(1.8)}px "Hiragino Sans","Yu Gothic",sans-serif`;
+  ctx.fillStyle = '#555';
+  ctx.fillText('出典: 国土地理院 地形図記号', X + W / 2, Y + mmToPx(8.2));
+
+  const entries = [
+    { h: '基準点' },
+    ['tri', '三角点'], ['etri', '電子基準点'], ['sq', '水準点'], ['dot', '標高点'],
+    { h: '道路・鉄道' },
+    ['road2', '2車線以上'], ['road1', '1車線'], ['roadFoot', '徒歩道'],
+    ['roadNat', '国道'], ['roadExp', '高速道路'],
+    ['railJR', '普通鉄道(JR)'], ['railPriv', '私鉄'], ['railSub', '地下鉄'],
+    { h: '境界・その他' },
+    ['bdyPref', '都府県界'], ['bdyCity', '市区町村界'], ['power', '送電線'],
+    { h: '建物・施設' },
+    ['cityhall', '市役所'], ['townhall', '町村役場'],
+    ['police', '警察署'], ['koban', '交番'], ['fire', '消防署'], ['health', '保健所'],
+    ['post', '郵便局'], ['school', '小・中学校'], ['highschool', '高等学校'],
+    ['hosp', '病院'], ['library', '図書館'], ['museum', '博物館'], ['oldhome', '老人ホーム'],
+    ['shrine', '神社'], ['temple', '寺院'], ['onsen', '温泉'],
+    ['lighthouse', '灯台'], ['windmill', '風車'], ['chimney', '煙突'], ['antenna', '電波塔'],
+    ['power_st', '発電所・変電所'], ['castle', '城跡'], ['hist', '史跡・名勝・天然記念物'],
+    ['monument', '記念碑'], ['anchor', '港湾・漁港'],
+    { h: '植生' },
+    ['veg_ta', '田'], ['veg_hata', '畑'], ['veg_cha', '茶畑'], ['veg_orchard', '果樹園'],
+    ['veg_broad', '広葉樹林'], ['veg_conifer', '針葉樹林'], ['veg_bamboo', '竹林'], ['veg_waste', '荒地'],
+  ];
+
+  const topPad = mmToPx(11);
+  const avail = H - topPad - mmToPx(2);
+  const rh = Math.min(mmToPx(4.6), avail / entries.length);
+  const s = rh * 0.42;
+  const iconCx = X + mmToPx(5);
+  const labelX = X + mmToPx(9.5);
+  const labelPx = Math.min(mmToPx(2.2), rh * 0.52);
+  let cy = Y + topPad;
+
+  for (const e of entries) {
+    const midY = cy + rh / 2;
+    if (e.h) {
+      ctx.fillStyle = '#00664B'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = `700 ${Math.min(mmToPx(2.4), rh * 0.6)}px "Hiragino Sans","Yu Gothic",sans-serif`;
+      ctx.fillText(e.h, X + mmToPx(2), midY);
+      ctx.strokeStyle = '#ccc'; ctx.lineWidth = mmToPx(0.15); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(X + mmToPx(2), cy + rh - mmToPx(0.3)); ctx.lineTo(X + W - mmToPx(2), cy + rh - mmToPx(0.3)); ctx.stroke();
+    } else {
+      drawLegendIcon(ctx, e[0], iconCx, midY, s);
+      ctx.fillStyle = '#000'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = `400 ${labelPx}px "Hiragino Sans","Yu Gothic",sans-serif`;
+      ctx.fillText(e[1], labelX, midY);
+    }
+    cy += rh;
+  }
+  ctx.restore();
 }
 
 function drawRouteOverlay(ctx, mapX, mapY, mapWpx, mapHpx, opts) {
