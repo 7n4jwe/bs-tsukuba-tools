@@ -1525,10 +1525,32 @@ const PAPER = {
 };
 
 // 凡例（地図記号）レイアウト
-const LEGEND_W_MM = 58;
+const LEGEND_W_MM = 66;
 const LEGEND_GAP_MM = 3;
 function legendOn() { const el = document.getElementById('ovLegend'); return !!(el && el.checked); }
 function legendReserveMm() { return legendOn() ? (LEGEND_W_MM + LEGEND_GAP_MM) : 0; }
+
+// 公式の地図記号画像（国土地理院）。CORSで取得できればそのまま掲載＝地図と完全一致。
+// 取得不可／canvas汚染時は null を返し、手描き凡例にフォールバック（印刷出力は壊さない）。
+const GSI_LEGEND_URL = 'https://www.gsi.go.jp/common/000218182.png';
+let _legendImg = null, _legendTried = false;
+function loadLegendImage() {
+  if (_legendTried) return Promise.resolve(_legendImg);
+  return new Promise(res => {
+    const im = new Image();
+    im.crossOrigin = 'anonymous';
+    im.onload = () => {
+      try {
+        const t = document.createElement('canvas'); t.width = 4; t.height = 4;
+        t.getContext('2d').drawImage(im, 0, 0, 4, 4); t.toDataURL(); // 汚染チェック
+        _legendImg = im;
+      } catch (e) { _legendImg = null; }
+      _legendTried = true; res(_legendImg);
+    };
+    im.onerror = () => { _legendTried = true; _legendImg = null; res(null); };
+    im.src = GSI_LEGEND_URL;
+  });
+}
 
 // ============================================================
 // Web Mercator変換
@@ -1778,8 +1800,9 @@ async function buildPrintCanvas(printCenter, mapNo) {
 
   // 凡例（地図記号）
   if (ovLegend) {
+    const legImg = await loadLegendImage();
     drawLegend(ctx, paperW - MARGIN_MM - LEGEND_W_MM, MARGIN_MM + HEADER_MM,
-      LEGEND_W_MM, paperH - MARGIN_MM * 2 - HEADER_MM - FOOTER_MM);
+      LEGEND_W_MM, paperH - MARGIN_MM * 2 - HEADER_MM - FOOTER_MM, legImg);
   }
 
   return { canvas, paperW, paperH };
@@ -2909,7 +2932,7 @@ function drawLegendIcon(ctx, kind, cx, cy, s) {
   ctx.restore();
 }
 
-function drawLegend(ctx, xMm, yMm, wMm, hMm) {
+function drawLegend(ctx, xMm, yMm, wMm, hMm, img) {
   const X = mmToPx(xMm), Y = mmToPx(yMm), W = mmToPx(wMm), H = mmToPx(hMm);
   ctx.save();
   ctx.fillStyle = '#fff'; ctx.fillRect(X, Y, W, H);
@@ -2922,6 +2945,22 @@ function drawLegend(ctx, xMm, yMm, wMm, hMm) {
   ctx.font = `400 ${mmToPx(1.8)}px "Hiragino Sans","Yu Gothic",sans-serif`;
   ctx.fillStyle = '#555';
   ctx.fillText('出典: 国土地理院 地形図記号', X + W / 2, Y + mmToPx(8.2));
+
+  // 公式記号画像が使える場合は、それをそのまま掲載（地図と完全一致）。
+  if (img) {
+    const srcW = 800, srcH = 1268; // 記号一覧のうち上部（下部4サンプルを除外）
+    const padX = mmToPx(2);
+    const drawW = W - padX * 2;
+    const drawH = drawW * srcH / srcW;
+    const top = Y + mmToPx(10.5);
+    const maxH = H - mmToPx(12);
+    const finalH = Math.min(drawH, maxH);
+    const finalW = finalH * srcW / srcH;
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, srcW, srcH, X + (W - finalW) / 2, top, finalW, finalH);
+    ctx.restore();
+    return;
+  }
 
   const entries = [
     { h: '基準点' },
