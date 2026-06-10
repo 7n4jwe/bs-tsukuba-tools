@@ -724,7 +724,14 @@
 
     <div class="section">
       <h2>方眼</h2>
-      <label class="row"><input type="checkbox" id="ovGrid" checked> 2cm方眼を描画</label>
+      <label class="row"><input type="checkbox" id="ovGrid" checked> 方眼を描画</label>
+      <div class="style-row">
+        <label>マス</label>
+        <select id="gridCell">
+          <option value="20" selected>2cm方眼</option>
+          <option value="40">4cm方眼</option>
+        </select>
+      </div>
       <div class="style-row">
         <label>色</label>
         <div class="color-with-reset">
@@ -1210,10 +1217,11 @@ function setupCommonUI() {
   });
 
   // 用紙設定の変更で表示範囲を再フィット
-  ['paperSize', 'paperOrient', 'paperScale'].forEach(id => {
-    document.getElementById(id).addEventListener('change', () => {
+  ['paperSize', 'paperOrient', 'paperScale', 'gridCell', 'ovGrid', 'ovAxisLabel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => {
       if (centerLatLng) fitMapToOutputArea();
-      renderRouteList(); // CP座標は用紙設定に依存するため再計算
+      renderRouteList(); // CP座標は用紙・方眼設定に依存するため再計算
     });
   });
 
@@ -1234,6 +1242,13 @@ function calcNeighborShift(dir, basisLat) {
 
 // 用紙設定から、実際に描画される地図領域の寸法(mm, m)を取得
 // buildPrintCanvasと完全に同じ計算をして、オーバーラップなしの接続を保証
+// 方眼1マスのmm（2cm=20 / 4cm=40）
+function gridCellMm() {
+  const el = document.getElementById('gridCell');
+  const v = el ? parseInt(el.value, 10) : 20;
+  return (v === 40) ? 40 : 20;
+}
+
 function getOutputMapDimensions() {
   const paperKey = document.getElementById('paperSize').value;
   const orient = document.getElementById('paperOrient').value;
@@ -1248,11 +1263,11 @@ function getOutputMapDimensions() {
   const bottomExtra = useAxis ? AXIS_LABEL_MM : 0;
   const mapWraw = paperW - leftMargin - MARGIN_MM;
   const mapHraw = paperH - MARGIN_MM * 2 - HEADER_MM - FOOTER_MM - bottomExtra;
-  const cellMm = 20;
+  const cellMm = gridCellMm();
   const mapWmm = Math.floor(mapWraw / cellMm) * cellMm;
   const mapHmm = Math.floor(mapHraw / cellMm) * cellMm;
   return {
-    mapWmm, mapHmm,
+    mapWmm, mapHmm, cellMm,
     realWm: mapWmm * scale / 1000,
     realHm: mapHmm * scale / 1000,
     scale,
@@ -1677,8 +1692,8 @@ async function buildPrintCanvas(printCenter, mapNo) {
   const mapW = paperW - leftMargin - MARGIN_MM;
   const mapH = paperH - MARGIN_MM * 2 - HEADER_MM - FOOTER_MM - bottomExtra;
 
-  // 2cm方眼の整数倍に揃える（軸番号の見映え向上）
-  const cellMm = 20;
+  // 方眼の整数倍に揃える（軸番号の見映え向上）
+  const cellMm = gridCellMm();
   const cellsX = Math.floor(mapW / cellMm);
   const cellsY = Math.floor(mapH / cellMm);
   const mapWadj = cellsX * cellMm;
@@ -1772,7 +1787,7 @@ function hexToRgba(hex, alpha) {
 }
 
 function drawGrid(ctx, x, y, w, h, cellsX, cellsY, opts) {
-  const stepPx = mmToPx(20);
+  const stepPx = mmToPx(gridCellMm());
   ctx.save();
   ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
   ctx.strokeStyle = hexToRgba(opts.color, 0.55);
@@ -1799,7 +1814,7 @@ function drawAxisLabels(ctx, x, y, w, h, cellsX, cellsY, color) {
   ctx.font = `600 ${fontSize}px "Menlo","Consolas",monospace`;
   ctx.textBaseline = 'middle';
 
-  const stepPx = mmToPx(20);
+  const stepPx = mmToPx(gridCellMm());
   const labelOffset = mmToPx(2);
   const xLabelY = y + h + labelOffset + fontSize / 2;
 
@@ -1935,8 +1950,8 @@ function drawFooter(ctx, xMm, yMm, wMm, hMm, info) {
   if (info.showScaleBar) {
     // 紙面上2cm（=方眼1セル）の実距離を表示
     // 1:25000 → 500m、1:50000 → 1000m
-    const cellMeters = 20 * info.scale / 1000; // 紙面mm * scale / 1000 = 実メートル
-    const barMm = 20;  // 紙面上2cm固定
+    const barMm = gridCellMm();  // 紙面上1マス
+    const cellMeters = barMm * info.scale / 1000; // 紙面mm * scale / 1000 = 実メートル
     const barPx = mmToPx(barMm);
     const barX = x + w - barPx - mmToPx(2);
     const barY = y + h * 0.72;
@@ -2256,7 +2271,7 @@ function pointMapInfo(lat, lng, CT, dims) {
   const sheetLng = CT.lng + (col * dims.realWm) / (111000 * cosLat);
   const proj = makeProj(sheetLat, sheetLng, dims.mapWmm, dims.mapHmm, dims.scale);
   const p = proj.toPx(lat, lng);
-  const stepPx = mmToPx(20);
+  const stepPx = mmToPx(dims.cellMm || gridCellMm());
   const xCells = p.x / stepPx;
   const yCells = (proj.mapHpx - p.y) / stepPx;
   const xv = Math.round(xCells * 10), yv = Math.round(yCells * 10);
@@ -2573,7 +2588,7 @@ async function printCpList() {
   @media print{body{margin:12mm;}}
 </style></head><body>
   <h1>${title} ／ チェックポイント一覧</h1>
-  <div class="meta">縮尺 1:${dims.scale.toLocaleString()}（2cm方眼=${dims.scale*20/1000}m）　/　CP数 ${cps.length}　/　総距離 ${totalKm} km　/　累計上り +${up.toFixed(0)}m・下り ${down.toFixed(0)}m${author ? '　/　作成者 ' + author : ''}　/　作成 ${dateStr}</div>
+  <div class="meta">縮尺 1:${dims.scale.toLocaleString()}（${dims.cellMm/10}cm方眼=${dims.scale*dims.cellMm/1000}m）　/　CP数 ${cps.length}　/　総距離 ${totalKm} km　/　累計上り +${up.toFixed(0)}m・下り ${down.toFixed(0)}m${author ? '　/　作成者 ' + author : ''}　/　作成 ${dateStr}</div>
   <table>
     <thead><tr><th>CP</th><th>地図</th><th>座標</th><th>区間距離(km)</th><th>累計距離(km)</th><th>標高(m)</th><th>標高差(m)</th><th>緯度経度</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
