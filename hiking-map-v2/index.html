@@ -2802,7 +2802,22 @@ function drawLegendIcon(ctx, kind, cx, cy, s) {
       ctx.moveTo(cx-s*0.38, cy-s*0.55); ctx.lineTo(cx-s*0.38, cy+s*0.6);
       ctx.moveTo(cx+s*0.38, cy-s*0.55); ctx.lineTo(cx+s*0.38, cy+s*0.6);
       ctx.stroke(); break;
-    case 'fire': glyph('Ｙ', '#000', 1.0); break; // 消防署（刺股）
+    case 'fire': // 消防署（さすまた）
+      ctx.lineWidth=lw; ctx.beginPath();
+      ctx.moveTo(cx, cy+s*0.7); ctx.lineTo(cx, cy);
+      ctx.moveTo(cx, cy); ctx.lineTo(cx-s*0.5, cy-s*0.5);
+      ctx.moveTo(cx, cy); ctx.lineTo(cx+s*0.5, cy-s*0.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx-s*0.5, cy-s*0.5); ctx.lineTo(cx-s*0.5, cy-s*0.15);
+      ctx.moveTo(cx+s*0.5, cy-s*0.5); ctx.lineTo(cx+s*0.5, cy-s*0.15);
+      ctx.stroke(); break;
+    case 'court': // 裁判所（立て札・旗）
+      ctx.lineWidth=lw; ctx.beginPath(); ctx.moveTo(cx-s*0.3, cy+s*0.6); ctx.lineTo(cx-s*0.3, cy-s*0.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-s*0.3, cy-s*0.6); ctx.lineTo(cx+s*0.55, cy-s*0.35); ctx.lineTo(cx-s*0.3, cy-s*0.1); ctx.closePath(); ctx.fill(); break;
+    case 'tax': // 税務署（そろばん玉）
+      ctx.lineWidth=lw; ctx.beginPath(); ctx.moveTo(cx-s*0.7, cy); ctx.lineTo(cx+s*0.7, cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, cy-s*0.42); ctx.lineTo(cx+s*0.4, cy); ctx.lineTo(cx, cy+s*0.42); ctx.lineTo(cx-s*0.4, cy); ctx.closePath(); ctx.stroke(); break;
     case 'hosp': // 病院（角丸＋十字）
       ctx.lineWidth=lw; ctx.strokeRect(cx-s*0.62, cy-s*0.62, s*1.24, s*1.24);
       ctx.beginPath(); ctx.moveTo(cx,cy-s*0.4); ctx.lineTo(cx,cy+s*0.4); ctx.moveTo(cx-s*0.4,cy); ctx.lineTo(cx+s*0.4,cy); ctx.stroke(); break;
@@ -2830,12 +2845,12 @@ function drawLegendIcon(ctx, kind, cx, cy, s) {
     case 'power_st': // 発電所・変電所（歯車風）
       ctx.lineWidth=Math.max(1,s*0.08); ctx.beginPath(); ctx.arc(cx,cy,s*0.45,0,7); ctx.stroke();
       for(let a=0;a<8;a++){ const an=a*Math.PI/4; ctx.beginPath(); ctx.moveTo(cx+Math.cos(an)*s*0.45,cy+Math.sin(an)*s*0.45); ctx.lineTo(cx+Math.cos(an)*s*0.7,cy+Math.sin(an)*s*0.7); ctx.stroke(); } break;
-    case 'antenna': // 電波塔
-      ctx.lineWidth=lw; ctx.beginPath();
-      ctx.moveTo(cx-s*0.45,cy+s*0.6); ctx.lineTo(cx,cy-s*0.6); ctx.lineTo(cx+s*0.45,cy+s*0.6); ctx.stroke();
-      ctx.lineWidth=Math.max(1,s*0.07);
-      ctx.beginPath(); ctx.arc(cx,cy-s*0.6,s*0.22,-Math.PI*0.8,-Math.PI*0.2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(cx,cy-s*0.6,s*0.4,-Math.PI*0.8,-Math.PI*0.2); ctx.stroke(); break;
+    case 'antenna': // 電波塔（鉄塔・マスト）
+      ctx.lineWidth=lw;
+      ctx.beginPath(); ctx.moveTo(cx, cy-s*0.7); ctx.lineTo(cx, cy+s*0.6); ctx.stroke();
+      ctx.lineWidth=Math.max(1,s*0.08);
+      for (const yy of [-0.25, 0.05, 0.4]) { const w = s*(0.18 + (yy+0.25)*0.5); ctx.beginPath(); ctx.moveTo(cx-w, cy+yy*s); ctx.lineTo(cx+w, cy+yy*s); ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(cx, cy-s*0.7, s*0.1, 0, 7); ctx.fill(); break;
     case 'library': // 図書館（開いた本）
       ctx.lineWidth=lw; ctx.beginPath();
       ctx.moveTo(cx,cy-s*0.45); ctx.quadraticCurveTo(cx-s*0.6,cy-s*0.55,cx-s*0.65,cy+s*0.35);
@@ -2909,6 +2924,7 @@ function drawLegend(ctx, xMm, yMm, wMm, hMm) {
     { h: '建物・施設' },
     ['cityhall', '市役所'], ['townhall', '町村役場'],
     ['police', '警察署'], ['koban', '交番'], ['fire', '消防署'], ['health', '保健所'],
+    ['court', '裁判所'], ['tax', '税務署'],
     ['post', '郵便局'], ['school', '小・中学校'], ['highschool', '高等学校'],
     ['hosp', '病院'], ['library', '図書館'], ['museum', '博物館'], ['oldhome', '老人ホーム'],
     ['shrine', '神社'], ['temple', '寺院'], ['onsen', '温泉'],
