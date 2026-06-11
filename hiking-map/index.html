@@ -153,8 +153,8 @@
   .section {
     background: var(--system-background);
     border-radius: var(--radius-lg);
-    padding: 16px;
-    margin-bottom: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
     border: none;
   }
   .section:last-child { margin-bottom: 0; }
@@ -167,14 +167,14 @@
 
   /* Labels */
   label {
-    display: block; margin-bottom: 10px;
-    font-size: 13px; color: var(--label-secondary);
+    display: block; margin-bottom: 6px;
+    font-size: 12px; color: var(--label-secondary);
     font-weight: 500;
   }
   label.row {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 8px;
-    font-size: 15px; color: var(--label-primary);
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 6px;
+    font-size: 13px; color: var(--label-primary);
     font-weight: 400;
     cursor: pointer;
   }
@@ -182,12 +182,12 @@
 
   /* Inputs */
   input[type=text], input[type=number], select, input[type=color] {
-    width: 100%; margin-top: 6px;
-    padding: 9px 12px;
+    width: 100%; margin-top: 4px;
+    padding: 5px 8px;
     border: 1px solid var(--separator);
     border-radius: var(--radius-sm);
     background: var(--system-background);
-    font-size: 15px;
+    font-size: 12px;
     font-family: inherit;
     color: var(--label-primary);
     -webkit-appearance: none;
@@ -202,12 +202,12 @@
   select {
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'><path fill='none' stroke='%238E8E93' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M3 5.5l4 3 4-3'/></svg>");
     background-repeat: no-repeat;
-    background-position: right 10px center;
-    padding-right: 32px;
+    background-position: right 8px center;
+    padding-right: 24px;
     cursor: pointer;
   }
   input[type=color] {
-    height: 38px; padding: 4px; cursor: pointer; margin-top: 0;
+    height: 30px; padding: 3px; cursor: pointer; margin-top: 0;
   }
   input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
   input[type=color]::-webkit-color-swatch { border: none; border-radius: 4px; }
@@ -244,7 +244,7 @@
   input[type=checkbox], input[type=radio] {
     -webkit-appearance: none;
     appearance: none;
-    width: 20px; height: 20px;
+    width: 18px; height: 18px;
     border: 1.5px solid var(--separator-opaque);
     background: var(--system-background);
     cursor: pointer;
@@ -283,12 +283,12 @@
 
   /* Buttons */
   button {
-    padding: 9px 16px;
+    padding: 7px 12px;
     border: none;
     background: var(--system-blue);
     color: white;
     font-family: inherit;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 600;
     letter-spacing: -0.01em;
     cursor: pointer;
@@ -313,13 +313,13 @@
   /* Coordinates display */
   .coords {
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 11px;
     color: var(--label-secondary);
-    padding: 12px;
+    padding: 8px 10px;
     background: var(--fill-quaternary);
     border-radius: var(--radius-sm);
-    line-height: 1.7;
-    margin-top: 12px;
+    line-height: 1.6;
+    margin-top: 10px;
   }
   .coords b {
     color: var(--label-primary); font-weight: 600;
@@ -386,6 +386,14 @@
   }
   .style-row select, .style-row input[type=color] { margin-top: 0; }
   .style-row:last-child { margin-bottom: 0; }
+  /* 方眼・磁北線などのプルダウンを小さめに */
+  .style-row label { font-size: 12px; }
+  .style-row select {
+    font-size: 12px;
+    padding: 5px 26px 5px 8px;
+    background-position: right 8px center;
+  }
+  .style-row input[type=color] { height: 30px; }
 
   /* Display toggle (segmented control look) */
   .display-toggle {
@@ -417,15 +425,15 @@
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     grid-template-rows: 1fr 1fr 1fr;
-    gap: 6px;
-    width: 168px;
-    margin: 12px auto 0;
+    gap: 4px;
+    width: 120px;
+    margin: 8px auto 0;
   }
   .neighbor-pad button {
     background: var(--fill-tertiary);
     color: var(--label-primary);
-    padding: 12px 0;
-    font-size: 17px;
+    padding: 6px 0;
+    font-size: 13px;
     font-weight: 600;
     border-radius: var(--radius-sm);
     transition: background 0.12s ease;
@@ -434,7 +442,7 @@
   .neighbor-pad button.center {
     background: var(--system-blue);
     color: white;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 600;
   }
   .neighbor-pad button.center:hover:not(:disabled) { background: var(--system-blue-hover); }
@@ -479,6 +487,19 @@
     font-size: 15px;
     font-weight: 600;
     border-radius: var(--radius-pill);
+  }
+  #previewPages {
+    width: 100%; overflow: auto;
+    display: flex; flex-direction: column; gap: 16px; align-items: center;
+    padding: 4px 0;
+  }
+  #previewPages .ppage { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  #previewPages .plabel { color: #fff; font-size: 13px; font-weight: 600; }
+  #previewPages canvas {
+    background: #fff; border-radius: 4px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    max-width: none; max-height: none;
+    image-rendering: -webkit-optimize-contrast;
   }
 
   /* API Key dialog */
@@ -599,6 +620,51 @@
     .brand-titles .subtitle, header .subtitle { display: none; }
     .grid-2 { grid-template-columns: 1fr; }
   }
+
+  /* ===== タブ ===== */
+  .tabbar {
+    display: flex; gap: 6px;
+    background: var(--fill-tertiary);
+    padding: 4px; border-radius: var(--radius-md);
+    margin-bottom: 14px;
+  }
+  .tabbar .tab {
+    flex: 1; background: transparent; color: var(--label-primary);
+    font-size: 14px; font-weight: 600; padding: 9px 8px;
+    border-radius: var(--radius-sm);
+  }
+  .tabbar .tab.active {
+    background: var(--system-background); color: var(--scout-green);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.10);
+  }
+  .tabbar .tab:hover:not(.active) { background: var(--fill-quaternary); }
+
+  /* ===== ルートリスト ===== */
+  .route-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .route-stats .b { background: var(--fill-quaternary); border-radius: var(--radius-sm); padding: 8px; text-align: center; }
+  .route-stats .b .l { font-size: 11px; color: var(--label-secondary); }
+  .route-stats .b .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  #routeList { list-style: none; padding: 0; margin: 12px 0 0; }
+  #routeList li {
+    display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center;
+    background: var(--system-background); border: 1px solid var(--separator);
+    border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: 6px;
+    cursor: grab; user-select: none;
+  }
+  #routeList li:active { cursor: grabbing; }
+  #routeList li.cp { border-color: var(--scout-red); }
+  #routeList .badge {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff; background: var(--scout-green);
+  }
+  #routeList li.cp .badge { background: var(--scout-red); }
+  #routeList .meta { min-width: 0; }
+  #routeList .meta .nm { font-size: 13px; font-weight: 600; }
+  #routeList .meta .co { font-size: 11px; color: var(--label-secondary); font-family: var(--font-mono); }
+  #routeList .rbtns { display: flex; gap: 4px; }
+  #routeList .rbtns button { padding: 5px 8px; font-size: 12px; }
+  #routeList .rbtns .del { background: var(--fill-tertiary); color: var(--scout-red); }
 </style>
 </head>
 <body>
@@ -622,6 +688,14 @@
   </div>
 
   <aside>
+
+    <div class="tabbar">
+      <button class="tab active" data-tab="map">地図</button>
+      <button class="tab" data-tab="route">ルート</button>
+      <button class="tab" data-tab="print">出力</button>
+    </div>
+
+    <div id="tabMap">
 
     <div class="section">
       <h2>場所</h2>
@@ -652,30 +726,6 @@
     </div>
 
     <div class="section">
-      <h2>用紙</h2>
-      <div class="grid-2">
-        <label>サイズ
-          <select id="paperSize">
-            <option value="A4">A4</option>
-            <option value="A3" selected>A3</option>
-          </select>
-        </label>
-        <label>向き
-          <select id="paperOrient">
-            <option value="portrait">縦</option>
-            <option value="landscape" selected>横</option>
-          </select>
-        </label>
-      </div>
-      <label>縮尺
-        <select id="paperScale">
-          <option value="25000">1:25,000</option>
-          <option value="50000">1:50,000</option>
-        </select>
-      </label>
-    </div>
-
-    <div class="section">
       <h2>地図の種類</h2>
       <div class="display-toggle" id="displayToggle">
         <button data-layer="google" class="active">Google</button>
@@ -688,7 +738,14 @@
 
     <div class="section">
       <h2>方眼</h2>
-      <label class="row"><input type="checkbox" id="ovGrid" checked> 2cm方眼を描画</label>
+      <label class="row"><input type="checkbox" id="ovGrid" checked> 方眼を描画</label>
+      <div class="style-row">
+        <label>マス</label>
+        <select id="gridCell">
+          <option value="20" selected>2cm方眼</option>
+          <option value="40">4cm方眼</option>
+        </select>
+      </div>
       <div class="style-row">
         <label>色</label>
         <div class="color-with-reset">
@@ -752,25 +809,126 @@
       </div>
     </div>
 
-    <div class="section">
-      <h2>その他</h2>
-      <label class="row"><input type="checkbox" id="ovScale" checked> 距離スケール</label>
-      <label class="row"><input type="checkbox" id="ovPin"> 中心ピン</label>
+    <div class="actions" style="margin-top:2px">
+      <button class="primary" id="btnMapToPrint">出力へ →</button>
     </div>
 
-    <div class="section">
-      <h2>タイトル</h2>
-      <label>タイトル
-        <input id="titleInput" type="text" placeholder="例: ハイキング" />
-      </label>
-    </div>
+    </div><!-- /tabMap -->
 
-    <div class="section">
-      <h2>出力</h2>
-      <div class="actions">
-        <button class="primary" id="previewBtn" disabled>プレビュー</button>
+    <div id="tabRoute" style="display:none">
+      <div class="section">
+        <h2>ルート</h2>
+        <div class="route-stats">
+          <div class="b"><div class="l">ピン</div><div class="v" id="rStatPins">0</div></div>
+          <div class="b"><div class="l">CP</div><div class="v" id="rStatCP">0</div></div>
+          <div class="b"><div class="l">総距離</div><div class="v" id="rStatDist">—</div></div>
+        </div>
+        <div class="hint">地図をクリックでピンを追加。ピン（地図上 または 下のリスト）をクリックでチェックポイント(CP)に設定します。CPにだけ番号が付きます。リストはドラッグで並び替え可。</div>
+        <ul id="routeList"></ul>
+        <div id="routeEmpty" class="hint" style="text-align:center;padding:10px 0">まだピンがありません</div>
+        <div class="actions" style="margin-top:10px">
+          <button class="secondary" id="btnRouteClear">全消去</button>
+        </div>
       </div>
-      <div class="hint">プレビュー画面でPDF/PNG出力を選択できます。</div>
+
+      <div class="section">
+        <h2>ルートの表示スタイル</h2>
+        <div class="style-row">
+          <label>ルート線</label>
+          <div class="color-with-reset">
+            <input type="color" id="routeLineColor" value="#C22047">
+            <button class="reset-btn" data-target="routeLineColor" data-default="#C22047" title="デフォルト色に戻す" aria-label="デフォルト色に戻す">↺</button>
+          </div>
+        </div>
+        <div class="style-row">
+          <label>CP点</label>
+          <div class="color-with-reset">
+            <input type="color" id="routeCpColor" value="#C22047">
+            <button class="reset-btn" data-target="routeCpColor" data-default="#C22047" title="デフォルト色に戻す" aria-label="デフォルト色に戻す">↺</button>
+          </div>
+        </div>
+        <div class="style-row">
+          <label>通常ピン</label>
+          <div class="color-with-reset">
+            <input type="color" id="routePinColor" value="#00664B">
+            <button class="reset-btn" data-target="routePinColor" data-default="#00664B" title="デフォルト色に戻す" aria-label="デフォルト色に戻す">↺</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:2px">
+        <button class="primary" id="btnRouteToPrint">出力へ →</button>
+      </div>
+    </div>
+
+    <div id="tabPrint" style="display:none">
+      <div class="section">
+        <h2>用紙</h2>
+        <div class="grid-2">
+          <label>サイズ
+            <select id="paperSize">
+              <option value="A4">A4</option>
+              <option value="A3" selected>A3</option>
+            </select>
+          </label>
+          <label>向き
+            <select id="paperOrient">
+              <option value="portrait">縦</option>
+              <option value="landscape" selected>横</option>
+            </select>
+          </label>
+        </div>
+        <label>縮尺
+          <select id="paperScale">
+            <option value="25000">1:25,000</option>
+            <option value="50000">1:50,000</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="section">
+        <h2>印刷に含める</h2>
+        <label class="row"><input type="checkbox" id="ovRoute" checked> ルート（線・CP）を重ねる</label>
+        <label class="row"><input type="checkbox" id="ovScale" checked> 距離スケール</label>
+        <label class="row"><input type="checkbox" id="ovPin"> 中心ピン</label>
+        <label class="row"><input type="checkbox" id="ovLegend"> 凡例（地図記号）※地図エリアを縮小</label>
+      </div>
+
+      <div class="section">
+        <h2>タイトル・作成者</h2>
+        <label>タイトル
+          <input id="titleInput" type="text" placeholder="例: ハイキング" />
+        </label>
+        <label>作成者
+          <input id="authorInput" type="text" placeholder="例: ボーイスカウトつくば第1団" />
+        </label>
+      </div>
+
+      <div class="section">
+        <h2>地図の出力</h2>
+        <div class="actions">
+          <button class="primary" id="previewBtn" disabled>プレビュー</button>
+        </div>
+        <div class="hint">プレビュー画面でPDF/PNG出力を選べます。ルートが複数の地図にまたがる場合は、被っている地図を全て出力します。方眼・磁北線の設定は「地図」タブ、ルートの重ね有無は上の「印刷に含める」で切り替えます。</div>
+      </div>
+
+      <div class="section">
+        <h2>ポイントリスト出力</h2>
+        <div class="actions">
+          <button class="secondary" id="btnListPrint">印刷</button>
+          <button class="secondary" id="btnListCSV">CSV</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>保存・共有</h2>
+        <div class="actions">
+          <button class="secondary" id="btnExport">エクスポート</button>
+          <button class="secondary" id="btnImport">インポート</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+        <div class="hint">地図の中心・用紙/方眼/磁北線などの設定・ルート・色をまとめてJSONで保存／読込します。他の人と共有すれば、同じ地図・ルートを再現して出力できます。</div>
+      </div>
     </div>
 
   </aside>
@@ -778,7 +936,7 @@
 
 <!-- Preview overlay -->
 <div class="preview-overlay" id="preview">
-  <canvas id="previewCanvas"></canvas>
+  <div id="previewPages"></div>
   <div class="pbar">
     <button class="secondary" id="closePreview">閉じる</button>
     <button id="downloadPng">PNG保存</button>
@@ -806,6 +964,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
 <script>
 'use strict';
@@ -927,9 +1086,9 @@ window.initGoogleMap = function() {
 
   googleState = { gsiStdType, gsiPaleType, gsiPhotoType };
 
-  // クリック → ピン
+  // クリック → 中心設定 または ルートピン追加（タブによる）
   map.addListener('click', e => {
-    setCenterFromClick({ lat: e.latLng.lat(), lng: e.latLng.lng() });
+    handleMapClick({ lat: e.latLng.lat(), lng: e.latLng.lng() });
   });
 
   // 画面表示トグル
@@ -937,42 +1096,38 @@ window.initGoogleMap = function() {
   // 地図コントロール（ズーム・回転）
   setupMapControls_Google();
 
-  // Places Autocomplete
-  try {
-    const ac = new google.maps.places.Autocomplete(
-      document.getElementById('searchInput'),
-      { fields: ['geometry', 'name', 'formatted_address', 'place_id'] }
-    );
-    ac.bindTo('bounds', map);
-    ac.addListener('place_changed', () => {
-      const place = ac.getPlace();
-      if (!place.geometry) return;
-      const loc = place.geometry.location;
-      const ll = { lat: loc.lat(), lng: loc.lng() };
-      map.panTo(ll); map.setZoom(15);
-      setCenterFromSearch(ll, {
-        label: place.name + (place.formatted_address ? ` (${place.formatted_address})` : ''),
-        accuracy: { level: 'PLACE', partial: false, source: 'Places' },
+  // 検索UIがある場合のみ初期化（検索は廃止済みのため通常はスキップ）
+  const _searchInput = document.getElementById('searchInput');
+  const _searchBtn = document.getElementById('searchBtn');
+  if (_searchInput) {
+    try {
+      const ac = new google.maps.places.Autocomplete(_searchInput,
+        { fields: ['geometry', 'name', 'formatted_address', 'place_id'] });
+      ac.bindTo('bounds', map);
+      ac.addListener('place_changed', () => {
+        const place = ac.getPlace();
+        if (!place.geometry) return;
+        const loc = place.geometry.location;
+        const ll = { lat: loc.lat(), lng: loc.lng() };
+        map.panTo(ll); map.setZoom(15);
+        setCenterFromSearch(ll, {
+          label: place.name + (place.formatted_address ? ` (${place.formatted_address})` : ''),
+          accuracy: { level: 'PLACE', partial: false, source: 'Places' },
+        });
       });
+    } catch (e) { console.warn('Places Autocomplete初期化失敗:', e); }
+    _searchInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter' && _searchBtn) {
+        setTimeout(() => { if (!centerLatLng) { e.preventDefault(); _searchBtn.click(); } }, 300);
+      }
     });
-  } catch (e) {
-    console.warn('Places Autocomplete初期化失敗:', e);
   }
-
-  document.getElementById('searchBtn').addEventListener('click', () => {
-    const q = document.getElementById('searchInput').value.trim();
-    if (q) googleGeocode(q);
-  });
-  document.getElementById('searchInput').addEventListener('keypress', e => {
-    if (e.key === 'Enter') {
-      setTimeout(() => {
-        if (!centerLatLng) {
-          e.preventDefault();
-          document.getElementById('searchBtn').click();
-        }
-      }, 300);
-    }
-  });
+  if (_searchBtn) {
+    _searchBtn.addEventListener('click', () => {
+      const q = _searchInput.value.trim();
+      if (q) googleGeocode(q);
+    });
+  }
 
   // 初期表示：デフォルト位置(守谷)で出力範囲にフィット
   google.maps.event.addListenerOnce(map, 'idle', () => {
@@ -1077,11 +1232,15 @@ function setupCommonUI() {
   });
 
   // 用紙設定の変更で表示範囲を再フィット
-  ['paperSize', 'paperOrient', 'paperScale'].forEach(id => {
-    document.getElementById(id).addEventListener('change', () => {
+  ['paperSize', 'paperOrient', 'paperScale', 'gridCell', 'ovGrid', 'ovAxisLabel', 'ovLegend'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => {
       if (centerLatLng) fitMapToOutputArea();
+      renderRouteList(); // CP座標は用紙・方眼設定に依存するため再計算
     });
   });
+
+  setupRouteTab();
 }
 
 // 用紙設定から1シート分のメートル幅・高さを計算 → 緯度経度デルタに変換
@@ -1098,6 +1257,13 @@ function calcNeighborShift(dir, basisLat) {
 
 // 用紙設定から、実際に描画される地図領域の寸法(mm, m)を取得
 // buildPrintCanvasと完全に同じ計算をして、オーバーラップなしの接続を保証
+// 方眼1マスのmm（2cm=20 / 4cm=40）
+function gridCellMm() {
+  const el = document.getElementById('gridCell');
+  const v = el ? parseInt(el.value, 10) : 20;
+  return (v === 40) ? 40 : 20;
+}
+
 function getOutputMapDimensions() {
   const paperKey = document.getElementById('paperSize').value;
   const orient = document.getElementById('paperOrient').value;
@@ -1110,13 +1276,13 @@ function getOutputMapDimensions() {
   const useAxis = ovGridChecked && ovAxisChecked;
   const leftMargin = MARGIN_MM + (useAxis ? AXIS_LABEL_MM : 0);
   const bottomExtra = useAxis ? AXIS_LABEL_MM : 0;
-  const mapWraw = paperW - leftMargin - MARGIN_MM;
+  const mapWraw = paperW - leftMargin - MARGIN_MM - legendReserveMm();
   const mapHraw = paperH - MARGIN_MM * 2 - HEADER_MM - FOOTER_MM - bottomExtra;
-  const cellMm = 20;
+  const cellMm = gridCellMm();
   const mapWmm = Math.floor(mapWraw / cellMm) * cellMm;
   const mapHmm = Math.floor(mapHraw / cellMm) * cellMm;
   return {
-    mapWmm, mapHmm,
+    mapWmm, mapHmm, cellMm,
     realWm: mapWmm * scale / 1000,
     realHm: mapHmm * scale / 1000,
     scale,
@@ -1207,39 +1373,43 @@ function initLeafletOnly() {
 
   let leafMarker = null;
   leafMap.on('click', e => {
-    setCenterFromClick({ lat: e.latlng.lat, lng: e.latlng.lng });
+    handleMapClick({ lat: e.latlng.lat, lng: e.latlng.lng });
   });
 
   // setCenterFromClick等から呼ばれる Leaflet用マーカー更新を共通関数に委譲するため
   // updateCenterMarker側でleafStateを参照
   leafState.marker = null;
 
-  document.getElementById('searchBtn').addEventListener('click', async () => {
-    const q = document.getElementById('searchInput').value.trim();
-    if (!q) return;
-    const status = document.getElementById('status');
-    status.className = ''; status.textContent = '検索中...';
-    try {
-      const url = `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(q)}`;
-      const r = await fetch(url);
-      const data = await r.json();
-      if (!data || data.length === 0) {
-        status.className = 'error'; status.textContent = '見つかりませんでした'; return;
+  const _lSearchBtn = document.getElementById('searchBtn');
+  const _lSearchInput = document.getElementById('searchInput');
+  if (_lSearchBtn) {
+    _lSearchBtn.addEventListener('click', async () => {
+      const q = _lSearchInput.value.trim();
+      if (!q) return;
+      const status = document.getElementById('status');
+      status.className = ''; status.textContent = '検索中...';
+      try {
+        const url = `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(q)}`;
+        const r = await fetch(url);
+        const data = await r.json();
+        if (!data || data.length === 0) {
+          status.className = 'error'; status.textContent = '見つかりませんでした'; return;
+        }
+        const top = data[0];
+        const [lng, lat] = top.geometry.coordinates;
+        leafMap.setView([lat, lng], 15);
+        setCenterFromSearch({ lat, lng }, {
+          label: top.properties.title,
+          accuracy: { level: 'GSI_ADDRESS', partial: false, source: 'GSI住所検索' },
+        });
+      } catch (err) {
+        status.className = 'error'; status.textContent = 'エラー: ' + err.message;
       }
-      const top = data[0];
-      const [lng, lat] = top.geometry.coordinates;
-      leafMap.setView([lat, lng], 15);
-      setCenterFromSearch({ lat, lng }, {
-        label: top.properties.title,
-        accuracy: { level: 'GSI_ADDRESS', partial: false, source: 'GSI住所検索' },
-      });
-    } catch (err) {
-      status.className = 'error'; status.textContent = 'エラー: ' + err.message;
-    }
-  });
-  document.getElementById('searchInput').addEventListener('keypress', e => {
-    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('searchBtn').click(); }
-  });
+    });
+    _lSearchInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') { e.preventDefault(); _lSearchBtn.click(); }
+    });
+  }
 
   // 初期表示：デフォルト位置で出力範囲にフィット
   setTimeout(() => {
@@ -1368,6 +1538,34 @@ const PAPER = {
   A3: { w: 297, h: 420 },
 };
 
+// 凡例（地図記号）レイアウト
+const LEGEND_W_MM = 66;
+const LEGEND_GAP_MM = 3;
+function legendOn() { const el = document.getElementById('ovLegend'); return !!(el && el.checked); }
+function legendReserveMm() { return legendOn() ? (LEGEND_W_MM + LEGEND_GAP_MM) : 0; }
+
+// 公式の地図記号画像（国土地理院）。CORSで取得できればそのまま掲載＝地図と完全一致。
+// 取得不可／canvas汚染時は null を返し、手描き凡例にフォールバック（印刷出力は壊さない）。
+const GSI_LEGEND_URL = 'https://www.gsi.go.jp/common/000218182.png';
+let _legendImg = null, _legendTried = false;
+function loadLegendImage() {
+  if (_legendTried) return Promise.resolve(_legendImg);
+  return new Promise(res => {
+    const im = new Image();
+    im.crossOrigin = 'anonymous';
+    im.onload = () => {
+      try {
+        const t = document.createElement('canvas'); t.width = 4; t.height = 4;
+        t.getContext('2d').drawImage(im, 0, 0, 4, 4); t.toDataURL(); // 汚染チェック
+        _legendImg = im;
+      } catch (e) { _legendImg = null; }
+      _legendTried = true; res(_legendImg);
+    };
+    im.onerror = () => { _legendTried = true; _legendImg = null; res(null); };
+    im.src = GSI_LEGEND_URL;
+  });
+}
+
 // ============================================================
 // Web Mercator変換
 // ============================================================
@@ -1452,7 +1650,48 @@ function loadTile(urlTpl, z, x, y) {
 // ============================================================
 // 印刷用紙Canvasの組み立て
 // ============================================================
-async function buildPrintCanvas() {
+// ルートが被っている地図(シート)の一覧を返す（ピン位置＋区間を細かくサンプリング）
+function getRouteSheets() {
+  const CT = ctCenter();
+  if (!CT || !routePins.length) return [];
+  const dims = getOutputMapDimensions();
+  const cosLat = Math.cos(CT.lat * Math.PI / 180);
+  const toCR = (lat, lng) => {
+    const Nm = (lat - CT.lat) * 111000;
+    const Em = (lng - CT.lng) * 111000 * cosLat;
+    return {
+      col: Math.floor((Em + dims.realWm / 2) / dims.realWm),
+      row: Math.floor((Nm + dims.realHm / 2) / dims.realHm),
+    };
+  };
+  const set = new Set();
+  const add = (lat, lng) => { const { col, row } = toCR(lat, lng); set.add(col + ',' + row); };
+  const sampleStep = Math.min(dims.realWm, dims.realHm) / 4;
+  for (let i = 0; i < routePins.length; i++) {
+    add(routePins[i].lat, routePins[i].lng);
+    if (i > 0) {
+      const a = routePins[i-1], b = routePins[i];
+      const steps = Math.max(2, Math.ceil(routeDist(a, b) / sampleStep));
+      for (let s = 1; s < steps; s++) {
+        const t = s / steps;
+        add(a.lat + (b.lat - a.lat) * t, a.lng + (b.lng - a.lng) * t);
+      }
+    }
+  }
+  const sheets = [...set].map(k => {
+    const [col, row] = k.split(',').map(Number);
+    return {
+      col, row, label: mapLabel(col, row),
+      lat: CT.lat + (row * dims.realHm) / 111000,
+      lng: CT.lng + (col * dims.realWm) / (111000 * cosLat),
+    };
+  });
+  sheets.sort((a, b) => (b.row - a.row) || (a.col - b.col)); // 北→南、西→東
+  return sheets;
+}
+
+async function buildPrintCanvas(printCenter, mapNo) {
+  const C = printCenter || centerLatLng;
   const paperKey = document.getElementById('paperSize').value;
   const orient = document.getElementById('paperOrient').value;
   const scale = parseInt(document.getElementById('paperScale').value, 10);
@@ -1465,6 +1704,7 @@ async function buildPrintCanvas() {
   else if (layerKey === 'gsi_photo') tileKey = 'photo';
   else tileKey = 'std';
   const title = document.getElementById('titleInput').value.trim();
+  const author = (document.getElementById('authorInput') || {}).value ? document.getElementById('authorInput').value.trim() : '';
 
   const ovGrid = document.getElementById('ovGrid').checked;
   const ovAxisLabel = document.getElementById('ovAxisLabel').checked;
@@ -1492,11 +1732,12 @@ async function buildPrintCanvas() {
   const leftMargin = MARGIN_MM + (ovGrid && ovAxisLabel ? AXIS_LABEL_MM : 0);
   const bottomExtra = ovGrid && ovAxisLabel ? AXIS_LABEL_MM : 0;
 
-  const mapW = paperW - leftMargin - MARGIN_MM;
+  const ovLegend = legendOn();
+  const mapW = paperW - leftMargin - MARGIN_MM - legendReserveMm();
   const mapH = paperH - MARGIN_MM * 2 - HEADER_MM - FOOTER_MM - bottomExtra;
 
-  // 2cm方眼の整数倍に揃える（軸番号の見映え向上）
-  const cellMm = 20;
+  // 方眼の整数倍に揃える（軸番号の見映え向上）
+  const cellMm = gridCellMm();
   const cellsX = Math.floor(mapW / cellMm);
   const cellsY = Math.floor(mapH / cellMm);
   const mapWadj = cellsX * cellMm;
@@ -1516,8 +1757,8 @@ async function buildPrintCanvas() {
 
   // 地図画像の生成
   const mapCanvas = await buildMapCanvas({
-    centerLat: centerLatLng.lat,
-    centerLng: centerLatLng.lng,
+    centerLat: C.lat,
+    centerLng: C.lng,
     mapWidthMm: mapWadj,
     mapHeightMm: mapHadj,
     scale, tileKey,
@@ -1541,7 +1782,7 @@ async function buildPrintCanvas() {
   }
 
   // 磁北線
-  const decl = calcDeclination(centerLatLng.lat, centerLatLng.lng);
+  const decl = calcDeclination(C.lat, C.lng);
   if (ovMag) {
     drawMagneticLines(ctx, mapX, mapY, mapCanvas.width, mapCanvas.height, decl, magOpts);
   }
@@ -1551,16 +1792,32 @@ async function buildPrintCanvas() {
     drawCenterPin(ctx, mapX + mapCanvas.width / 2, mapY + mapCanvas.height / 2);
   }
 
+  // ルート（ピン・線。CPのみ番号付与）※「印刷に含める」のルート重ねON時のみ
+  const ovRouteEl = document.getElementById('ovRoute');
+  if (!ovRouteEl || ovRouteEl.checked) {
+    drawRouteOverlay(ctx, mapX, mapY, mapCanvas.width, mapCanvas.height, {
+      centerLat: C.lat, centerLng: C.lng,
+      mapWmm: mapWadj, mapHmm: mapHadj, scale,
+    });
+  }
+
   // ヘッダー
   drawHeader(ctx, MARGIN_MM, MARGIN_MM, paperW - MARGIN_MM * 2, HEADER_MM, {
-    title, paperKey, orient, scale
+    title, paperKey, orient, scale, mapNo
   });
 
   // フッター
   drawFooter(ctx, MARGIN_MM, paperH - MARGIN_MM - FOOTER_MM, paperW - MARGIN_MM * 2, FOOTER_MM, {
-    lat: centerLatLng.lat, lng: centerLatLng.lng,
-    decl, scale, tileKey, showScaleBar: ovScale,
+    lat: C.lat, lng: C.lng,
+    decl, scale, tileKey, showScaleBar: ovScale, author,
   });
+
+  // 凡例（地図記号）
+  if (ovLegend) {
+    const legImg = await loadLegendImage();
+    drawLegend(ctx, paperW - MARGIN_MM - LEGEND_W_MM, MARGIN_MM + HEADER_MM,
+      LEGEND_W_MM, paperH - MARGIN_MM * 2 - HEADER_MM - FOOTER_MM, legImg);
+  }
 
   return { canvas, paperW, paperH };
 }
@@ -1581,7 +1838,7 @@ function hexToRgba(hex, alpha) {
 }
 
 function drawGrid(ctx, x, y, w, h, cellsX, cellsY, opts) {
-  const stepPx = mmToPx(20);
+  const stepPx = mmToPx(gridCellMm());
   ctx.save();
   ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
   ctx.strokeStyle = hexToRgba(opts.color, 0.55);
@@ -1608,7 +1865,7 @@ function drawAxisLabels(ctx, x, y, w, h, cellsX, cellsY, color) {
   ctx.font = `600 ${fontSize}px "Menlo","Consolas",monospace`;
   ctx.textBaseline = 'middle';
 
-  const stepPx = mmToPx(20);
+  const stepPx = mmToPx(gridCellMm());
   const labelOffset = mmToPx(2);
   const xLabelY = y + h + labelOffset + fontSize / 2;
 
@@ -1691,7 +1948,7 @@ function drawHeader(ctx, xMm, yMm, wMm, hMm, info) {
   ctx.textAlign = 'left';
   ctx.fillText(titleStr, x, y + h * 0.4);
 
-  const meta = `1:${info.scale.toLocaleString()}  /  ${info.paperKey} ${info.orient === 'portrait' ? '縦' : '横'}`;
+  const meta = `1:${info.scale.toLocaleString()}  /  ${info.paperKey} ${info.orient === 'portrait' ? '縦' : '横'}` + (info.mapNo ? `  /  地図 ${info.mapNo}` : '');
   const metaSize = mmToPx(3);
   ctx.font = `400 ${metaSize}px "Hiragino Sans","Yu Gothic","Meiryo",sans-serif`;
   ctx.textAlign = 'right';
@@ -1725,7 +1982,7 @@ function drawFooter(ctx, xMm, yMm, wMm, hMm, info) {
   ctx.textBaseline = 'middle';
 
   ctx.textAlign = 'left';
-  const coord = `中心: ${info.lat.toFixed(5)}, ${info.lng.toFixed(5)}  /  磁針方位: 西偏 ${info.decl.toFixed(2)}°`;
+  const coord = `中心: ${info.lat.toFixed(5)}, ${info.lng.toFixed(5)}  /  磁針方位: 西偏 ${info.decl.toFixed(2)}°` + (info.author ? `  /  作成者: ${info.author}` : '');
   ctx.fillText(coord, x, y + h * 0.38);
 
   const credit = '出典: 国土地理院の電子地形図（タイル）に磁北線・方眼を追記して掲載';
@@ -1744,8 +2001,8 @@ function drawFooter(ctx, xMm, yMm, wMm, hMm, info) {
   if (info.showScaleBar) {
     // 紙面上2cm（=方眼1セル）の実距離を表示
     // 1:25000 → 500m、1:50000 → 1000m
-    const cellMeters = 20 * info.scale / 1000; // 紙面mm * scale / 1000 = 実メートル
-    const barMm = 20;  // 紙面上2cm固定
+    const barMm = gridCellMm();  // 紙面上1マス
+    const cellMeters = barMm * info.scale / 1000; // 紙面mm * scale / 1000 = 実メートル
     const barPx = mmToPx(barMm);
     const barX = x + w - barPx - mmToPx(2);
     const barY = y + h * 0.72;
@@ -1771,29 +2028,53 @@ function drawFooter(ctx, xMm, yMm, wMm, hMm, info) {
 // ============================================================
 // プレビュー & ダウンロード
 // ============================================================
-let currentPrintData = null;
+let currentPrintPages = []; // [{ canvas, paperW, paperH, label }]
 
 document.getElementById('previewBtn').addEventListener('click', async () => {
   if (!centerLatLng) return;
   const btn = document.getElementById('previewBtn');
   btn.disabled = true;
   btn.textContent = '生成中...';
+
+  // ルート重ねONかつルートがある場合は、被っている全シートを出力。それ以外は中心の1枚。
+  const ovRouteOn = !document.getElementById('ovRoute') || document.getElementById('ovRoute').checked;
+  let centers;
+  if (ovRouteOn && routePins.length) {
+    const sheets = getRouteSheets();
+    centers = sheets.length
+      ? sheets.map(s => ({ lat: s.lat, lng: s.lng, label: s.label }))
+      : [{ lat: centerLatLng.lat, lng: centerLatLng.lng, label: null }];
+  } else {
+    centers = [{ lat: centerLatLng.lat, lng: centerLatLng.lng, label: null }];
+  }
+
+  const wrap = document.getElementById('previewPages');
+  wrap.innerHTML = '';
+  currentPrintPages = [];
   try {
-    const result = await buildPrintCanvas();
-    currentPrintData = result;
-    const prev = document.getElementById('previewCanvas');
-    // Canvasの実解像度は印刷物と同じに保ち、CSSで表示サイズだけ縮める。
-    // これにより細い破線・点線も縮小時に潰れずに正しくレンダリングされる。
-    prev.width = result.canvas.width;
-    prev.height = result.canvas.height;
-    const pctx = prev.getContext('2d');
-    pctx.drawImage(result.canvas, 0, 0);
-    // CSSでフィット
-    const maxW = window.innerWidth * 0.88;
-    const maxH = window.innerHeight * 0.78;
-    const ratio = Math.min(maxW / result.canvas.width, maxH / result.canvas.height);
-    prev.style.width = (result.canvas.width * ratio) + 'px';
-    prev.style.height = (result.canvas.height * ratio) + 'px';
+    for (let i = 0; i < centers.length; i++) {
+      btn.textContent = centers.length > 1 ? `生成中... (${i+1}/${centers.length})` : '生成中...';
+      const c = centers[i];
+      const result = await buildPrintCanvas({ lat: c.lat, lng: c.lng }, c.label);
+      currentPrintPages.push({ canvas: result.canvas, paperW: result.paperW, paperH: result.paperH, label: c.label });
+
+      const page = document.createElement('div');
+      page.className = 'ppage';
+      if (c.label) {
+        const lab = document.createElement('div');
+        lab.className = 'plabel';
+        lab.textContent = '地図 ' + c.label;
+        page.appendChild(lab);
+      }
+      const cv = result.canvas; // 実解像度のまま、CSSで表示サイズだけ縮小
+      const maxW = window.innerWidth * 0.84;
+      const maxH = window.innerHeight * (centers.length > 1 ? 0.62 : 0.74);
+      const ratio = Math.min(maxW / cv.width, maxH / cv.height);
+      cv.style.width = (cv.width * ratio) + 'px';
+      cv.style.height = (cv.height * ratio) + 'px';
+      page.appendChild(cv);
+      wrap.appendChild(page);
+    }
     document.getElementById('preview').classList.add('active');
   } catch (err) {
     alert('生成エラー: ' + err.message);
@@ -1809,25 +2090,28 @@ document.getElementById('closePreview').addEventListener('click', () => {
 });
 
 document.getElementById('downloadPng').addEventListener('click', () => {
-  if (!currentPrintData) return;
-  const a = document.createElement('a');
-  a.download = makeFilename('png');
-  a.href = currentPrintData.canvas.toDataURL('image/png');
-  a.click();
+  if (!currentPrintPages.length) return;
+  currentPrintPages.forEach((pg, i) => {
+    const a = document.createElement('a');
+    const suffix = pg.label ? '_' + pg.label : (currentPrintPages.length > 1 ? '_' + (i+1) : '');
+    a.download = makeFilename('png').replace(/\.png$/, suffix + '.png');
+    a.href = pg.canvas.toDataURL('image/png');
+    a.click();
+  });
 });
 
 document.getElementById('downloadPdf').addEventListener('click', () => {
-  if (!currentPrintData) return;
-  const { canvas, paperW, paperH } = currentPrintData;
+  if (!currentPrintPages.length) return;
   const { jsPDF } = window.jspdf;
-  const orient = paperW > paperH ? 'landscape' : 'portrait';
-  const pdf = new jsPDF({
-    orientation: orient,
-    unit: 'mm',
-    format: paperW > paperH ? [paperH, paperW] : [paperW, paperH],
+  let pdf = null;
+  currentPrintPages.forEach((pg, i) => {
+    const orient = pg.paperW > pg.paperH ? 'landscape' : 'portrait';
+    const fmt = pg.paperW > pg.paperH ? [pg.paperH, pg.paperW] : [pg.paperW, pg.paperH];
+    if (i === 0) pdf = new jsPDF({ orientation: orient, unit: 'mm', format: fmt });
+    else pdf.addPage(fmt, orient);
+    const imgData = pg.canvas.toDataURL('image/jpeg', 0.92);
+    pdf.addImage(imgData, 'JPEG', 0, 0, pg.paperW, pg.paperH);
   });
-  const imgData = canvas.toDataURL('image/jpeg', 0.92);
-  pdf.addImage(imgData, 'JPEG', 0, 0, paperW, paperH);
   pdf.save(makeFilename('pdf'));
 });
 
@@ -1837,6 +2121,976 @@ function makeFilename(ext) {
   const d = new Date();
   const dstr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
   return `${safe}_${dstr}.${ext}`;
+}
+
+// ============================================================
+// ルート計画（別タブ）
+//   ・V1の中心設定は維持。中心を置いたら地図中心は固定。
+//   ・ルートタブで地図クリック → ピン追加（中心は動かさない）
+//   ・ピンをクリック → CP化（CPにだけ番号）。通常ピンは番号なし。
+//   ・印刷時はピンを小さく描画、CPのみ番号。
+// ============================================================
+let currentTab = 'map';
+const routePins = []; // { lat, lng, isCP, cpNo, gmarker, lmarker }
+let routePolyline = null;   // google
+let routeLeafLine = null;   // leaflet
+
+function switchTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tabbar .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.getElementById('tabMap').style.display   = name === 'map'   ? '' : 'none';
+  document.getElementById('tabRoute').style.display = name === 'route' ? '' : 'none';
+  document.getElementById('tabPrint').style.display = name === 'print' ? '' : 'none';
+}
+
+function setupRouteTab() {
+  document.querySelectorAll('.tabbar .tab').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+  document.getElementById('btnMapToPrint').addEventListener('click', () => switchTab('print'));
+  document.getElementById('btnRouteToPrint').addEventListener('click', () => switchTab('print'));
+  document.getElementById('btnRouteClear').addEventListener('click', clearRoute);
+  document.getElementById('btnListCSV').addEventListener('click', exportRouteCSV);
+  document.getElementById('btnListPrint').addEventListener('click', printCpList);
+  // ルート色の変更で地図上の表示を更新
+  ['routeLineColor', 'routeCpColor', 'routePinColor'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', refreshRoute);
+  });
+  document.querySelectorAll('.reset-btn').forEach(b => {
+    if (['routeLineColor', 'routeCpColor', 'routePinColor'].includes(b.dataset.target)) {
+      b.addEventListener('click', () => setTimeout(refreshRoute, 0));
+    }
+  });
+  // エクスポート / インポート
+  document.getElementById('btnExport').addEventListener('click', exportState);
+  document.getElementById('btnImport').addEventListener('click', () => document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change', handleImportFile);
+  // リスト並び替え
+  if (window.Sortable) {
+    Sortable.create(document.getElementById('routeList'), {
+      animation: 150,
+      onEnd: (e) => {
+        const item = routePins.splice(e.oldIndex, 1)[0];
+        routePins.splice(e.newIndex, 0, item);
+        refreshRoute();
+      }
+    });
+  }
+  switchTab('map');
+  renderRouteList();
+}
+
+// 中心設定 / ルートピン追加のディスパッチャ
+function handleMapClick(ll) {
+  if (currentTab === 'route') addRoutePin(ll.lat, ll.lng);
+  else setCenterFromClick(ll);
+}
+
+function routeDist(a, b) {
+  const R = 6371000, tr = d => d * Math.PI / 180;
+  const dLat = tr(b.lat - a.lat), dLng = tr(b.lng - a.lng);
+  const x = Math.sin(dLat/2)**2 + Math.cos(tr(a.lat)) * Math.cos(tr(b.lat)) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+function routeColors() {
+  const v = (id, d) => { const el = document.getElementById(id); return (el && el.value) ? el.value : d; };
+  return {
+    line: v('routeLineColor', '#C22047'),
+    cp:   v('routeCpColor', '#C22047'),
+    pin:  v('routePinColor', '#00664B'),
+  };
+}
+function googleRouteIcon(p) {
+  const col = routeColors();
+  return {
+    path: google.maps.SymbolPath.CIRCLE,
+    scale: p.isCP ? 9 : 5,
+    fillColor: p.isCP ? col.cp : col.pin,
+    fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2,
+  };
+}
+function leafRouteStyle(p) {
+  const col = routeColors();
+  return {
+    radius: p.isCP ? 8 : 5,
+    fillColor: p.isCP ? col.cp : col.pin,
+    fillOpacity: 1, color: '#fff', weight: 2,
+  };
+}
+
+function addRoutePin(lat, lng) {
+  const pin = { lat, lng, isCP: false, cpNo: null, gmarker: null, lmarker: null };
+  routePins.push(pin);
+  createRouteMarker(pin);
+  refreshRoute();
+}
+
+function createRouteMarker(pin) {
+  if (mapMode === 'google' && map) {
+    pin.gmarker = new google.maps.Marker({
+      position: { lat: pin.lat, lng: pin.lng },
+      map, draggable: true, icon: googleRouteIcon(pin),
+    });
+    pin.gmarker.addListener('click', () => { pin.isCP = !pin.isCP; refreshRoute(); });
+    pin.gmarker.addListener('dragend', e => {
+      pin.lat = e.latLng.lat(); pin.lng = e.latLng.lng(); refreshRoute();
+    });
+  } else if (mapMode === 'leaflet' && leafState) {
+    pin.lmarker = L.circleMarker([pin.lat, pin.lng], leafRouteStyle(pin)).addTo(leafState.map);
+    pin.lmarker.on('click', () => { pin.isCP = !pin.isCP; refreshRoute(); });
+  }
+}
+
+function refreshRoute() {
+  // CP番号を順に振る
+  let n = 0;
+  routePins.forEach(p => { if (p.isCP) { n++; p.cpNo = n; } else p.cpNo = null; });
+  // マーカー更新
+  routePins.forEach(p => {
+    if (mapMode === 'google' && p.gmarker) {
+      p.gmarker.setIcon(googleRouteIcon(p));
+      p.gmarker.setLabel(p.isCP ? { text: String(p.cpNo), color: '#fff', fontSize: '11px', fontWeight: '700' } : null);
+    } else if (mapMode === 'leaflet' && p.lmarker) {
+      p.lmarker.setStyle(leafRouteStyle(p));
+    }
+  });
+  drawRouteLine();
+  renderRouteList();
+  updateRouteStats();
+}
+
+function drawRouteLine() {
+  const path = routePins.map(p => ({ lat: p.lat, lng: p.lng }));
+  if (mapMode === 'google' && map) {
+    if (routePolyline) routePolyline.setMap(null);
+    if (path.length >= 2) {
+      routePolyline = new google.maps.Polyline({
+        path, map, strokeColor: routeColors().line, strokeOpacity: 0.9, strokeWeight: 3,
+      });
+    }
+  } else if (mapMode === 'leaflet' && leafState) {
+    if (routeLeafLine) leafState.map.removeLayer(routeLeafLine);
+    if (path.length >= 2) {
+      routeLeafLine = L.polyline(path.map(p => [p.lat, p.lng]), {
+        color: routeColors().line, weight: 3, opacity: 0.9,
+      }).addTo(leafState.map);
+    }
+  }
+}
+
+// 印刷キャンバスと同じWeb Mercator投影で 緯度経度→地図領域内ピクセル
+function makeProj(centerLat, centerLng, mapWmm, mapHmm, scale) {
+  const zoom = pickZoom(scale);
+  const c = lngLatToWorldPx(centerLng, centerLat, zoom);
+  const mpp = 156543.03392 * Math.cos(centerLat * Math.PI / 180) / Math.pow(2, zoom);
+  const realW = mapWmm * scale / 1000, realH = mapHmm * scale / 1000;
+  const tpw = realW / mpp, tph = realH / mpp;
+  const wx0 = c.x - tpw / 2, wy0 = c.y - tph / 2;
+  const mapWpx = mmToPx(mapWmm), mapHpx = mmToPx(mapHmm);
+  return {
+    mapWpx, mapHpx,
+    toPx: (lat, lng) => {
+      const w = lngLatToWorldPx(lng, lat, zoom);
+      return { x: (w.x - wx0) / tpw * mapWpx, y: (w.y - wy0) / tph * mapHpx };
+    }
+  };
+}
+
+// CT（中心点をセットした地図）= 原点。移動パッドで中心を動かしてもCTは固定。
+function ctCenter() { return originLatLng || centerLatLng || null; }
+
+// 地図番号ラベル（CT基準。東=E,西=W,北=N,南=S。例 E1, W2, S2, E1N1, CT）
+function mapLabel(col, row) {
+  if (col === 0 && row === 0) return 'CT';
+  let s = '';
+  if (col > 0) s += 'E' + col; else if (col < 0) s += 'W' + (-col);
+  if (row > 0) s += 'N' + row; else if (row < 0) s += 'S' + (-row);
+  return s;
+}
+
+// 点が属する地図番号＋そのシート内ローカル座標（印刷の軸番号と一致：左下00・1/10セル）
+function pointMapInfo(lat, lng, CT, dims) {
+  const cosLat = Math.cos(CT.lat * Math.PI / 180);
+  const Nm = (lat - CT.lat) * 111000;                 // 北方向メートル
+  const Em = (lng - CT.lng) * 111000 * cosLat;        // 東方向メートル
+  const col = Math.floor((Em + dims.realWm / 2) / dims.realWm);
+  const row = Math.floor((Nm + dims.realHm / 2) / dims.realHm);
+  // そのシートの中心
+  const sheetLat = CT.lat + (row * dims.realHm) / 111000;
+  const sheetLng = CT.lng + (col * dims.realWm) / (111000 * cosLat);
+  const proj = makeProj(sheetLat, sheetLng, dims.mapWmm, dims.mapHmm, dims.scale);
+  const p = proj.toPx(lat, lng);
+  const stepPx = mmToPx(dims.cellMm || gridCellMm());
+  const xCells = p.x / stepPx;
+  const yCells = (proj.mapHpx - p.y) / stepPx;
+  const xv = Math.round(xCells * 10), yv = Math.round(yCells * 10);
+  const f = v => String(Math.max(0, v)).padStart(3, '0');
+  return { col, row, label: mapLabel(col, row), x: f(xv), y: f(yv), raw: f(xv) + f(yv), Em, Nm };
+}
+
+function routeGridCoord(lat, lng) {
+  const CT = ctCenter();
+  if (!CT) return null;
+  return pointMapInfo(lat, lng, CT, getOutputMapDimensions());
+}
+
+function renderRouteList() {
+  const ul = document.getElementById('routeList');
+  if (!ul) return;
+  ul.innerHTML = '';
+  let n = 0;
+  routePins.forEach((p, i) => {
+    if (p.isCP) { n++; p.cpNo = n; } else p.cpNo = null;
+  });
+  routePins.forEach((p, i) => {
+    const li = document.createElement('li');
+    if (p.isCP) li.classList.add('cp');
+
+    const badge = document.createElement('div');
+    badge.className = 'badge';
+    badge.textContent = p.isCP ? String(p.cpNo) : '•';
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const nm = document.createElement('div');
+    nm.className = 'nm';
+    const gc = routeGridCoord(p.lat, p.lng);
+    nm.textContent = p.isCP ? (gc ? `CP ${p.cpNo} / ${gc.label} ${gc.raw}` : `CP ${p.cpNo}`) : '通常ピン';
+    const co = document.createElement('div');
+    co.className = 'co';
+    co.textContent = `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+    meta.appendChild(nm); meta.appendChild(co);
+
+    const rb = document.createElement('div');
+    rb.className = 'rbtns';
+    const tg = document.createElement('button');
+    tg.className = 'secondary';
+    tg.textContent = p.isCP ? '通常へ' : 'CPに';
+    tg.onclick = (e) => { e.stopPropagation(); p.isCP = !p.isCP; refreshRoute(); };
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.textContent = '×';
+    del.onclick = (e) => { e.stopPropagation(); removeRoutePin(i); };
+    rb.appendChild(tg); rb.appendChild(del);
+
+    li.appendChild(badge); li.appendChild(meta); li.appendChild(rb);
+    ul.appendChild(li);
+  });
+  document.getElementById('routeEmpty').style.display = routePins.length ? 'none' : 'block';
+}
+
+function removeRoutePin(i) {
+  const p = routePins[i];
+  if (!p) return;
+  if (p.gmarker) p.gmarker.setMap(null);
+  if (p.lmarker && leafState) leafState.map.removeLayer(p.lmarker);
+  routePins.splice(i, 1);
+  refreshRoute();
+}
+
+function updateRouteStats() {
+  document.getElementById('rStatPins').textContent = routePins.length;
+  document.getElementById('rStatCP').textContent = routePins.filter(p => p.isCP).length;
+  let total = 0;
+  for (let i = 1; i < routePins.length; i++) total += routeDist(routePins[i-1], routePins[i]);
+  document.getElementById('rStatDist').textContent =
+    routePins.length < 2 ? '—' : (total / 1000).toFixed(2) + ' km';
+}
+
+function clearRoute() {
+  if (!routePins.length) return;
+  if (!confirm('ルートのピンをすべて消去しますか？')) return;
+  routePins.forEach(p => {
+    if (p.gmarker) p.gmarker.setMap(null);
+    if (p.lmarker && leafState) leafState.map.removeLayer(p.lmarker);
+  });
+  routePins.length = 0;
+  if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
+  if (routeLeafLine && leafState) { leafState.map.removeLayer(routeLeafLine); routeLeafLine = null; }
+  refreshRoute();
+}
+
+// CPのみのリストを生成（距離はCP間＝ルート沿い、累計はCP間距離の積算）
+function getCpList() {
+  const list = [];
+  let since = 0;       // 直前CPからのルート沿い距離
+  let cum = 0;         // CP間距離の累計
+  let seenCp = false;
+  for (let i = 0; i < routePins.length; i++) {
+    if (i > 0) since += routeDist(routePins[i-1], routePins[i]);
+    const p = routePins[i];
+    if (p.isCP) {
+      const seg = seenCp ? since : 0; // 最初のCPは区間0
+      cum += seg;
+      const gc = routeGridCoord(p.lat, p.lng) || { label: '—', x: '---', y: '---', raw: '------' };
+      list.push({
+        no: list.length + 1,
+        lat: p.lat, lng: p.lng, gc,
+        seg, cum,
+      });
+      since = 0;
+      seenCp = true;
+    }
+  }
+  return list;
+}
+
+// 標高取得（国土地理院 標高API。CORS許可あり・キー不要）
+async function fetchElev(lat, lng) {
+  try {
+    const r = await fetch(`https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php?lon=${lng}&lat=${lat}&outtype=JSON`);
+    const j = await r.json();
+    const e = parseFloat(j.elevation);
+    return isNaN(e) ? null : e;
+  } catch (_) { return null; }
+}
+
+// CPリスト＋標高（標高差は直前CP比）
+async function buildCpRows() {
+  const cps = getCpList();
+  await Promise.all(cps.map(async c => { c.elev = await fetchElev(c.lat, c.lng); }));
+  cps.forEach((c, i) => {
+    c.ed = (i > 0 && c.elev != null && cps[i-1].elev != null) ? (c.elev - cps[i-1].elev) : null;
+  });
+  return cps;
+}
+function fmtElev(v) { return v == null ? '—' : v.toFixed(1); }
+function fmtEd(v) { return v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1); }
+
+async function exportRouteCSV() {
+  if (!getCpList().length) { alert('チェックポイントがありません。ピンをクリックしてCPに設定してください。'); return; }
+  const btn = document.getElementById('btnListCSV');
+  const old = btn.textContent; btn.disabled = true; btn.textContent = '取得中...';
+  try {
+    const cps = await buildCpRows();
+    const rows = [['CP', '地図', '座標', 'X', 'Y', '区間距離(m)', '累計距離(m)', '標高(m)', '標高差(m)', 'lat', 'lng']];
+    cps.forEach(c => {
+      rows.push([
+        c.no, c.gc.label, c.gc.raw, c.gc.x, c.gc.y,
+        Math.round(c.seg), Math.round(c.cum),
+        c.elev == null ? '' : c.elev.toFixed(1),
+        c.ed == null ? '' : c.ed.toFixed(1),
+        c.lat.toFixed(6), c.lng.toFixed(6),
+      ]);
+    });
+    const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `cplist_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  } finally { btn.disabled = false; btn.textContent = old; }
+}
+
+// ルート全体図SVG（地図(シート)のグリッドに番号を振り、ルートとCPを重ねる）
+function buildOverviewSvg() {
+  const CT = ctCenter();
+  if (!CT) return '<div class="note">中心(CT)が未設定のため全体図を描画できません。「地図」タブで中心を設定してください。</div>';
+  if (!routePins.length) return '<div class="note">ピンがありません。</div>';
+  const dims = getOutputMapDimensions();
+  const cosLat = Math.cos(CT.lat * Math.PI / 180);
+  const pts = routePins.map(p => {
+    const Nm = (p.lat - CT.lat) * 111000;
+    const Em = (p.lng - CT.lng) * 111000 * cosLat;
+    const col = Math.floor((Em + dims.realWm / 2) / dims.realWm);
+    const row = Math.floor((Nm + dims.realHm / 2) / dims.realHm);
+    return { Em, Nm, col, row, isCP: p.isCP };
+  });
+  let minC = 0, maxC = 0, minR = 0, maxR = 0;
+  pts.forEach(q => { minC = Math.min(minC, q.col); maxC = Math.max(maxC, q.col); minR = Math.min(minR, q.row); maxR = Math.max(maxR, q.row); });
+  const cols = maxC - minC + 1, rows = maxR - minR + 1;
+  const eastMin = (minC - 0.5) * dims.realWm, eastMax = (maxC + 0.5) * dims.realWm;
+  const northMin = (minR - 0.5) * dims.realHm, northMax = (maxR + 0.5) * dims.realHm;
+
+  const maxW = 720, maxH = 520;
+  const mL = 12, mT = 12;
+  // セル幅: 列数で割って全幅に収めるが、上限を設けて1枚のとき巨大化しないようにする
+  let cw = Math.min(220, (maxW - mL * 2) / cols);
+  let ch = cw * (dims.realHm / dims.realWm);
+  if (ch * rows > maxH) { ch = maxH / rows; cw = ch * (dims.realWm / dims.realHm); }
+  const W = mL * 2 + cw * cols, H = mT * 2 + ch * rows;
+  const X = e => mL + (e - eastMin) / (eastMax - eastMin) * cw * cols;
+  const Y = n => mT + (northMax - n) / (northMax - northMin) * ch * rows;
+
+  let cells = '';
+  for (let c = minC; c <= maxC; c++) for (let r = minR; r <= maxR; r++) {
+    const x = X((c - 0.5) * dims.realWm), y = Y((r + 0.5) * dims.realHm);
+    const isCT = (c === 0 && r === 0);
+    cells += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${cw.toFixed(1)}" height="${ch.toFixed(1)}" fill="${isCT ? 'rgba(0,102,75,0.08)' : '#fff'}" stroke="#bbb" stroke-width="1"/>`;
+    cells += `<text x="${(x + 5).toFixed(1)}" y="${(y + 15).toFixed(1)}" font-size="12" font-weight="700" fill="${isCT ? '#00664B' : '#999'}">${mapLabel(c, r)}</text>`;
+  }
+  const col = routeColors();
+  const line = pts.map(q => `${X(q.Em).toFixed(1)},${Y(q.Nm).toFixed(1)}`).join(' ');
+  let marks = '', cp = 0;
+  pts.forEach(q => {
+    const x = X(q.Em), y = Y(q.Nm);
+    if (q.isCP) {
+      cp++;
+      marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" fill="${col.cp}" stroke="#fff" stroke-width="1"/>`;
+      marks += `<text x="${x.toFixed(1)}" y="${(y - 7).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="${col.cp}">${cp}</text>`;
+    } else {
+      marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.8" fill="${col.pin}"/>`;
+    }
+  });
+  const polyline = pts.length >= 2 ? `<polyline points="${line}" fill="none" stroke="${col.line}" stroke-width="2" stroke-linejoin="round"/>` : '';
+  return `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" style="width:${W.toFixed(0)}px;max-width:100%;height:auto;" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,'Hiragino Sans','Yu Gothic','Meiryo',sans-serif">
+    ${cells}
+    ${polyline}
+    ${marks}
+  </svg>`;
+}
+
+// 標高断面図SVG（X=距離km, Y=標高m, CPごとに点）
+function buildElevSvg(cps) {
+  const valid = cps.filter(c => c.elev != null);
+  if (valid.length < 2) {
+    return '<div class="note">標高が取得できたチェックポイントが2点未満のため、断面図を描画できませんでした。</div>';
+  }
+  const W = 760, H = 380, mL = 58, mR = 22, mT = 22, mB = 48;
+  const plotW = W - mL - mR, plotH = H - mT - mB;
+  const xMax = Math.max(...cps.map(c => c.cum), 1);
+  let yMin = Math.min(...valid.map(c => c.elev));
+  let yMax = Math.max(...valid.map(c => c.elev));
+  if (yMax === yMin) { yMax += 10; yMin -= 10; }
+  const pad = (yMax - yMin) * 0.1; yMin -= pad; yMax += pad;
+  const X = m => mL + (m / xMax) * plotW;
+  const Y = e => mT + (1 - (e - yMin) / (yMax - yMin)) * plotH;
+
+  let grid = '';
+  const yTicks = 5;
+  for (let i = 0; i <= yTicks; i++) {
+    const e = yMin + (yMax - yMin) * i / yTicks;
+    const yy = Y(e).toFixed(1);
+    grid += `<line x1="${mL}" y1="${yy}" x2="${mL + plotW}" y2="${yy}" stroke="#e2e2e2" stroke-width="1"/>`;
+    grid += `<text x="${mL - 7}" y="${(Y(e) + 3).toFixed(1)}" text-anchor="end" font-size="11" fill="#555">${Math.round(e)}</text>`;
+  }
+  const xTicks = 6;
+  for (let i = 0; i <= xTicks; i++) {
+    const m = xMax * i / xTicks;
+    const xx = X(m).toFixed(1);
+    grid += `<line x1="${xx}" y1="${mT}" x2="${xx}" y2="${mT + plotH}" stroke="#f0f0f0" stroke-width="1"/>`;
+    grid += `<text x="${xx}" y="${mT + plotH + 16}" text-anchor="middle" font-size="11" fill="#555">${(m / 1000).toFixed(1)}</text>`;
+  }
+
+  const linePts = valid.map(c => `${X(c.cum).toFixed(1)},${Y(c.elev).toFixed(1)}`).join(' ');
+  const areaPts = `${X(valid[0].cum).toFixed(1)},${(mT + plotH).toFixed(1)} ` + linePts +
+    ` ${X(valid[valid.length-1].cum).toFixed(1)},${(mT + plotH).toFixed(1)}`;
+  let marks = '';
+  valid.forEach(c => {
+    const x = X(c.cum), y = Y(c.elev);
+    marks += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" fill="#C22047" stroke="#fff" stroke-width="1"/>`;
+    marks += `<text x="${x.toFixed(1)}" y="${(y - 8).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#C22047">${c.no}</text>`;
+  });
+
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,'Hiragino Sans','Yu Gothic','Meiryo',sans-serif">
+    ${grid}
+    <polygon points="${areaPts}" fill="rgba(0,102,75,0.10)"/>
+    <polyline points="${linePts}" fill="none" stroke="#00664B" stroke-width="2" stroke-linejoin="round"/>
+    ${marks}
+    <line x1="${mL}" y1="${mT}" x2="${mL}" y2="${mT + plotH}" stroke="#333" stroke-width="1"/>
+    <line x1="${mL}" y1="${mT + plotH}" x2="${mL + plotW}" y2="${mT + plotH}" stroke="#333" stroke-width="1"/>
+    <text x="${mL + plotW / 2}" y="${H - 8}" text-anchor="middle" font-size="12" fill="#333">距離 (km)</text>
+    <text x="14" y="${mT + plotH / 2}" text-anchor="middle" font-size="12" fill="#333" transform="rotate(-90 14 ${mT + plotH / 2})">標高 (m)</text>
+  </svg>`;
+}
+
+async function printCpList() {
+  if (!getCpList().length) { alert('チェックポイントがありません。ピンをクリックしてCPに設定してください。'); return; }
+  const btn = document.getElementById('btnListPrint');
+  const old = btn.textContent; btn.disabled = true; btn.textContent = '取得中...';
+  let cps;
+  try { cps = await buildCpRows(); }
+  finally { btn.disabled = false; btn.textContent = old; }
+
+  const title = (document.getElementById('titleInput').value.trim()) || 'ハイキングルート';
+  const author = (document.getElementById('authorInput') && document.getElementById('authorInput').value.trim()) || '';
+  const dims = getOutputMapDimensions();
+  const d = new Date();
+  const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  const totalKm = (cps.length ? cps[cps.length-1].cum / 1000 : 0).toFixed(2);
+  let up = 0, down = 0;
+  cps.forEach(c => { if (c.ed != null) { if (c.ed > 0) up += c.ed; else down += c.ed; } });
+  const rowsHtml = cps.map(c =>
+    `<tr><td class="c">${c.no}</td><td class="m">${c.gc.label}</td><td class="m">${c.gc.raw}</td>` +
+    `<td class="r">${(c.seg/1000).toFixed(2)}</td><td class="r">${(c.cum/1000).toFixed(2)}</td>` +
+    `<td class="r">${fmtElev(c.elev)}</td><td class="r">${fmtEd(c.ed)}</td>` +
+    `<td class="s">${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}</td></tr>`
+  ).join('');
+  const overviewSvg = buildOverviewSvg();
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+<title>${title} チェックポイント一覧</title>
+<style>
+  body{font-family:-apple-system,"Hiragino Sans","Yu Gothic","Meiryo",sans-serif;color:#111;margin:24px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .meta{font-size:12px;color:#555;margin-bottom:16px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{border:1px solid #999;padding:7px 9px;text-align:left;}
+  th{background:#eee;}
+  td.c{text-align:center;font-weight:700;width:42px;}
+  td.m{font-family:"SF Mono",Menlo,Consolas,monospace;font-weight:600;}
+  td.r{text-align:right;font-variant-numeric:tabular-nums;}
+  td.s{font-family:"SF Mono",Menlo,Consolas,monospace;color:#666;font-size:11px;}
+  .profile{page-break-before:always;margin-top:28px;}
+  .profile h2{font-size:16px;margin:0 0 4px;}
+  .profile .sub{font-size:11px;color:#666;margin-bottom:10px;}
+  svg{display:block;width:100%;max-width:760px;}
+  @media print{body{margin:12mm;}}
+</style></head><body>
+  <h1>${title} ／ チェックポイント一覧</h1>
+  <div class="meta">縮尺 1:${dims.scale.toLocaleString()}（${dims.cellMm/10}cm方眼=${dims.scale*dims.cellMm/1000}m）　/　CP数 ${cps.length}　/　総距離 ${totalKm} km　/　累計上り +${up.toFixed(0)}m・下り ${down.toFixed(0)}m${author ? '　/　作成者 ' + author : ''}　/　作成 ${dateStr}</div>
+  <table>
+    <thead><tr><th>CP</th><th>地図</th><th>座標</th><th>区間距離(km)</th><th>累計距離(km)</th><th>標高(m)</th><th>標高差(m)</th><th>緯度経度</th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+  <div class="profile">
+    <h2>ルート全体図</h2>
+    ${overviewSvg}
+  </div>
+  <div class="profile">
+    <h2>標高断面図</h2>
+    <div class="sub">横軸=累計距離(km)／縦軸=標高(m)。各点はチェックポイント（番号付き）。</div>
+    ${buildElevSvg(cps)}
+  </div>
+  <script>window.onload=function(){window.print();};<\/script>
+</body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { alert('ポップアップがブロックされました。ポップアップを許可してください。'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+
+// 印刷キャンバスへルートを重ねる（ピンは小さく、CPのみ番号）
+// ============================================================
+// エクスポート / インポート（共有用）
+// ============================================================
+function _v(id) { const el = document.getElementById(id); return el ? el.value : undefined; }
+function _c(id) { const el = document.getElementById(id); return el ? el.checked : undefined; }
+function _setV(id, v) { const el = document.getElementById(id); if (el && v != null) el.value = v; }
+function _setC(id, v) { const el = document.getElementById(id); if (el && v != null) el.checked = !!v; }
+
+function gatherState() {
+  let zoom = null;
+  if (mapMode === 'google' && map) zoom = map.getZoom();
+  else if (mapMode === 'leaflet' && leafState) zoom = leafState.map.getZoom();
+  const layerBtn = document.querySelector('#displayToggle button.active');
+  return {
+    app: 'bs-tsukuba-hiking-map', version: 1, savedAt: new Date().toISOString(),
+    center: centerLatLng, origin: originLatLng, zoom,
+    paper: { size: _v('paperSize'), orient: _v('paperOrient'), scale: _v('paperScale') },
+    layer: layerBtn ? layerBtn.dataset.layer : 'gsi_std',
+    title: _v('titleInput'),
+    author: _v('authorInput'),
+    grid: { on: _c('ovGrid'), axis: _c('ovAxisLabel'), color: _v('gridColor'), style: _v('gridStyle'), width: _v('gridWidth') },
+    mag: { on: _c('ovMag'), color: _v('magColor'), style: _v('magStyle'), width: _v('magWidth'), spacing: _v('magSpacing') },
+    misc: { scaleBar: _c('ovScale'), centerPin: _c('ovPin'), routeOverlay: _c('ovRoute'), legend: _c('ovLegend'), gridCell: _v('gridCell') },
+    routeStyle: { line: _v('routeLineColor'), cp: _v('routeCpColor'), pin: _v('routePinColor') },
+    pins: routePins.map(p => ({ lat: p.lat, lng: p.lng, isCP: p.isCP })),
+  };
+}
+
+function exportState() {
+  const data = gatherState();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const t = (_v('titleInput') || 'hiking-route').replace(/[\\/:*?"<>|\s]/g, '_');
+  a.download = `${t}_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+function handleImportFile(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const s = JSON.parse(reader.result);
+      applyState(s);
+    } catch (err) {
+      alert('読み込みに失敗しました: ' + err.message);
+    }
+    e.target.value = ''; // 同じファイルを連続で選べるように
+  };
+  reader.readAsText(file);
+}
+
+function applyState(s) {
+  if (!s || typeof s !== 'object') { alert('無効なファイルです'); return; }
+  // 設定
+  if (s.paper) { _setV('paperSize', s.paper.size); _setV('paperOrient', s.paper.orient); _setV('paperScale', s.paper.scale); }
+  _setV('titleInput', s.title || '');
+  _setV('authorInput', s.author || '');
+  if (s.grid) { _setC('ovGrid', s.grid.on); _setC('ovAxisLabel', s.grid.axis); _setV('gridColor', s.grid.color); _setV('gridStyle', s.grid.style); _setV('gridWidth', s.grid.width); }
+  if (s.mag) { _setC('ovMag', s.mag.on); _setV('magColor', s.mag.color); _setV('magStyle', s.mag.style); _setV('magWidth', s.mag.width); _setV('magSpacing', s.mag.spacing); }
+  if (s.misc) { _setC('ovScale', s.misc.scaleBar); _setC('ovPin', s.misc.centerPin); _setC('ovRoute', s.misc.routeOverlay); _setC('ovLegend', s.misc.legend); if (s.misc.gridCell) _setV('gridCell', s.misc.gridCell); }
+  if (s.routeStyle) { _setV('routeLineColor', s.routeStyle.line); _setV('routeCpColor', s.routeStyle.cp); _setV('routePinColor', s.routeStyle.pin); }
+  // 地図種別トグル
+  if (s.layer) {
+    const b = document.querySelector(`#displayToggle button[data-layer="${s.layer}"]`);
+    if (b && !b.disabled) b.click();
+  }
+  // 既存ルートを消去
+  routePins.forEach(p => { if (p.gmarker) p.gmarker.setMap(null); if (p.lmarker && leafState) leafState.map.removeLayer(p.lmarker); });
+  routePins.length = 0;
+  if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
+  if (routeLeafLine && leafState) { leafState.map.removeLayer(routeLeafLine); routeLeafLine = null; }
+  // 中心・原点
+  if (s.origin) originLatLng = { lat: s.origin.lat, lng: s.origin.lng };
+  if (s.center) {
+    centerLatLng = { lat: s.center.lat, lng: s.center.lng };
+    currentAccuracy = { level: 'CLICK', partial: false, source: 'インポート' };
+    updateCenterMarker(centerLatLng);
+    refreshCenterUI();
+    if (mapMode === 'google' && map) {
+      map.setCenter(centerLatLng);
+      if (s.zoom) map.setZoom(Math.floor(s.zoom)); else fitMapToOutputArea();
+    } else if (mapMode === 'leaflet' && leafState) {
+      leafState.map.setView([centerLatLng.lat, centerLatLng.lng], s.zoom ? Math.floor(s.zoom) : 15);
+    }
+  }
+  // ピン
+  (s.pins || []).forEach(pp => {
+    const pin = { lat: pp.lat, lng: pp.lng, isCP: !!pp.isCP, cpNo: null, gmarker: null, lmarker: null };
+    routePins.push(pin);
+    createRouteMarker(pin);
+  });
+  refreshRoute();
+  document.getElementById('status').className = 'ok';
+  document.getElementById('status').textContent = '✓ インポートしました';
+}
+
+// ============================================================
+// 凡例（地図記号）— 国土地理院の地形図記号を独自に再描画
+// ============================================================
+function drawLegendIcon(ctx, kind, cx, cy, s) {
+  ctx.save();
+  ctx.strokeStyle = '#000'; ctx.fillStyle = '#000';
+  ctx.setLineDash([]); ctx.lineCap = 'butt';
+  const hl = s * 1.35;               // 線記号の半長
+  const lw = Math.max(1, s * 0.10);
+  const glyph = (ch, col, scale) => {
+    ctx.fillStyle = col || '#000';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${(scale || 1.25) * s}px "Hiragino Sans","Yu Gothic","Meiryo",sans-serif`;
+    ctx.fillText(ch, cx, cy);
+  };
+  const hlineDash = (dash, width, col) => {
+    ctx.strokeStyle = col || '#000'; ctx.lineWidth = width || lw; ctx.setLineDash(dash || []);
+    ctx.beginPath(); ctx.moveTo(cx - hl, cy); ctx.lineTo(cx + hl, cy); ctx.stroke(); ctx.setLineDash([]);
+  };
+  switch (kind) {
+    // --- 基準点 ---
+    case 'tri': // 三角点
+      ctx.lineWidth = lw; ctx.beginPath();
+      ctx.moveTo(cx, cy - s*0.7); ctx.lineTo(cx + s*0.7, cy + s*0.55); ctx.lineTo(cx - s*0.7, cy + s*0.55); ctx.closePath(); ctx.stroke(); break;
+    case 'etri': // 電子基準点（三角点＋上に小三角）
+      ctx.lineWidth = lw; ctx.beginPath();
+      ctx.moveTo(cx, cy - s*0.45); ctx.lineTo(cx + s*0.7, cy + s*0.6); ctx.lineTo(cx - s*0.7, cy + s*0.6); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, cy - s*0.95); ctx.lineTo(cx + s*0.28, cy - s*0.5); ctx.lineTo(cx - s*0.28, cy - s*0.5); ctx.closePath(); ctx.stroke(); break;
+    case 'sq': // 水準点（四角＋中央点）
+      ctx.lineWidth = lw; ctx.strokeRect(cx - s*0.6, cy - s*0.6, s*1.2, s*1.2);
+      ctx.beginPath(); ctx.arc(cx, cy, s*0.14, 0, 7); ctx.fill(); break;
+    case 'dot': // 標高点
+      ctx.beginPath(); ctx.arc(cx, cy, s*0.22, 0, 7); ctx.fill(); break;
+    // --- 道路・鉄道 ---
+    case 'road2': // 2車線以上（二重線）
+      ctx.strokeStyle='#000'; ctx.lineWidth=lw;
+      ctx.beginPath(); ctx.moveTo(cx-hl,cy-s*0.28); ctx.lineTo(cx+hl,cy-s*0.28);
+      ctx.moveTo(cx-hl,cy+s*0.28); ctx.lineTo(cx+hl,cy+s*0.28); ctx.stroke(); break;
+    case 'road1': hlineDash([], lw); break; // 1車線
+    case 'roadFoot': hlineDash([s*0.5, s*0.4], Math.max(1,s*0.08)); break; // 徒歩道
+    case 'roadNat': // 国道（赤）
+      hlineDash([], s*0.34, '#C2402a'); break;
+    case 'roadExp': // 高速道路（緑・太）
+      hlineDash([], s*0.5, '#1f7a4d'); break;
+    case 'railJR': // 普通鉄道(JR) 線＋枕木
+      ctx.strokeStyle='#000'; ctx.lineWidth=Math.max(1,s*0.12);
+      ctx.beginPath(); ctx.moveTo(cx-hl,cy); ctx.lineTo(cx+hl,cy); ctx.stroke();
+      ctx.lineWidth=Math.max(1,s*0.08);
+      for(let t=-hl+s*0.3;t<=hl;t+=s*0.45){ ctx.beginPath(); ctx.moveTo(cx+t,cy-s*0.3); ctx.lineTo(cx+t,cy+s*0.3); ctx.stroke(); } break;
+    case 'railPriv': hlineDash([], Math.max(1,s*0.16)); break; // 私鉄
+    case 'railSub': hlineDash([s*0.5,s*0.35], Math.max(1,s*0.12)); break; // 地下鉄
+    // --- 境界・その他線 ---
+    case 'bdyPref': hlineDash([s*0.9,s*0.3,s*0.12,s*0.3], lw); break; // 都府県界
+    case 'bdyCity': hlineDash([s*0.6,s*0.25,s*0.12,s*0.25], lw); break; // 市区町村界
+    case 'power': // 送電線
+      hlineDash([], lw);
+      ctx.beginPath(); ctx.arc(cx, cy, s*0.16, 0, 7); ctx.fill(); break;
+    // --- 施設（グリフ流用） ---
+    case 'cityhall': glyph('◎'); break;
+    case 'townhall': glyph('○'); break;
+    case 'police': glyph('⊗'); break;
+    case 'koban': glyph('✕', '#000', 1.0); break;
+    case 'health': glyph('⊕'); break;
+    case 'school': glyph('文', '#000', 1.05); break;
+    case 'highschool': // 高等学校（文を○で囲む）
+      ctx.lineWidth=lw; ctx.beginPath(); ctx.arc(cx,cy,s*0.62,0,7); ctx.stroke(); glyph('文','#000',0.62); break;
+    case 'post': // 郵便局（〒を○で囲む）
+      ctx.lineWidth=lw; ctx.beginPath(); ctx.arc(cx,cy,s*0.62,0,7); ctx.stroke(); glyph('〒','#000',0.58); break;
+    case 'temple': glyph('卍', '#000', 1.05); break;
+    case 'onsen': glyph('♨', '#000', 1.15); break;
+    case 'anchor': // 港湾・漁港（いかり）白黒で描画
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1, s*0.12);
+      ctx.beginPath(); ctx.moveTo(cx, cy-s*0.45); ctx.lineTo(cx, cy+s*0.62); ctx.stroke(); // shank
+      ctx.lineWidth = Math.max(1, s*0.09);
+      ctx.beginPath(); ctx.arc(cx, cy-s*0.6, s*0.16, 0, 7); ctx.stroke();                  // ring
+      ctx.lineWidth = Math.max(1, s*0.1);
+      ctx.beginPath(); ctx.moveTo(cx-s*0.34, cy-s*0.25); ctx.lineTo(cx+s*0.34, cy-s*0.25); ctx.stroke(); // stock
+      ctx.lineWidth = Math.max(1, s*0.12);
+      ctx.beginPath(); ctx.arc(cx, cy+s*0.1, s*0.5, Math.PI*0.12, Math.PI*0.88); ctx.stroke(); // arms
+      ctx.lineWidth = Math.max(1, s*0.1);
+      ctx.beginPath();
+      ctx.moveTo(cx-s*0.49, cy+s*0.36); ctx.lineTo(cx-s*0.62, cy+s*0.18);
+      ctx.moveTo(cx+s*0.49, cy+s*0.36); ctx.lineTo(cx+s*0.62, cy+s*0.18);
+      ctx.stroke(); ctx.lineCap='butt'; break;
+    case 'shrine': // 神社 鳥居
+      ctx.lineWidth=lw;
+      ctx.beginPath();
+      ctx.moveTo(cx-s*0.6, cy-s*0.55); ctx.lineTo(cx+s*0.6, cy-s*0.55); // 笠木
+      ctx.moveTo(cx-s*0.5, cy-s*0.3); ctx.lineTo(cx+s*0.5, cy-s*0.3);   // 貫
+      ctx.moveTo(cx-s*0.38, cy-s*0.55); ctx.lineTo(cx-s*0.38, cy+s*0.6);
+      ctx.moveTo(cx+s*0.38, cy-s*0.55); ctx.lineTo(cx+s*0.38, cy+s*0.6);
+      ctx.stroke(); break;
+    case 'fire': // 消防署（さすまた＝Y字）
+      ctx.lineWidth=lw; ctx.lineCap='round'; ctx.beginPath();
+      ctx.moveTo(cx, cy+s*0.7); ctx.lineTo(cx, cy-s*0.05);
+      ctx.moveTo(cx, cy-s*0.05); ctx.lineTo(cx-s*0.55, cy-s*0.62);
+      ctx.moveTo(cx, cy-s*0.05); ctx.lineTo(cx+s*0.55, cy-s*0.62);
+      ctx.stroke(); ctx.lineCap='butt'; break;
+    case 'court': // 裁判所（立て札・旗）
+      ctx.lineWidth=lw; ctx.beginPath(); ctx.moveTo(cx-s*0.3, cy+s*0.6); ctx.lineTo(cx-s*0.3, cy-s*0.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-s*0.3, cy-s*0.6); ctx.lineTo(cx+s*0.55, cy-s*0.35); ctx.lineTo(cx-s*0.3, cy-s*0.1); ctx.closePath(); ctx.fill(); break;
+    case 'tax': // 税務署（そろばん玉）
+      ctx.lineWidth=lw; ctx.beginPath(); ctx.moveTo(cx-s*0.7, cy); ctx.lineTo(cx+s*0.7, cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, cy-s*0.42); ctx.lineTo(cx+s*0.4, cy); ctx.lineTo(cx, cy+s*0.42); ctx.lineTo(cx-s*0.4, cy); ctx.closePath(); ctx.stroke(); break;
+    case 'hosp': // 病院（角丸＋十字）
+      ctx.lineWidth=lw; ctx.strokeRect(cx-s*0.62, cy-s*0.62, s*1.24, s*1.24);
+      ctx.beginPath(); ctx.moveTo(cx,cy-s*0.4); ctx.lineTo(cx,cy+s*0.4); ctx.moveTo(cx-s*0.4,cy); ctx.lineTo(cx+s*0.4,cy); ctx.stroke(); break;
+    case 'lighthouse': // 灯台（光を放つ点）
+      ctx.lineWidth=Math.max(1,s*0.09);
+      for(let a=0;a<8;a++){ const an=a*Math.PI/4; const r2=(a%2===0)?s*0.78:s*0.48; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(an)*r2,cy+Math.sin(an)*r2); ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(cx,cy,s*0.16,0,7); ctx.fill(); break;
+    case 'windmill': // 風車（3枚羽根）
+      ctx.lineWidth=Math.max(1,s*0.12);
+      for(let a=0;a<3;a++){ const an=-Math.PI/2+a*2*Math.PI/3; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(an)*s*0.72, cy+Math.sin(an)*s*0.72); ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(cx,cy,s*0.14,0,7); ctx.fill(); break;
+    case 'chimney': // 煙突
+      ctx.lineWidth=lw; ctx.strokeRect(cx-s*0.2, cy-s*0.5, s*0.4, s*1.1);
+      ctx.beginPath(); ctx.arc(cx+s*0.05, cy-s*0.65, s*0.12, 0, 7); ctx.stroke(); break;
+    case 'castle': // 城跡（石垣）
+      ctx.lineWidth=lw; ctx.beginPath();
+      ctx.moveTo(cx-s*0.6, cy+s*0.5); ctx.lineTo(cx-s*0.6, cy-s*0.2); ctx.lineTo(cx-s*0.3,cy-s*0.2);
+      ctx.lineTo(cx-s*0.3,cy-s*0.5); ctx.lineTo(cx+s*0.0,cy-s*0.5); ctx.lineTo(cx+s*0.0,cy-s*0.2);
+      ctx.lineTo(cx+s*0.6,cy-s*0.2); ctx.lineTo(cx+s*0.6,cy+s*0.5); ctx.closePath(); ctx.stroke(); break;
+    case 'hist': // 史跡・名勝・天然記念物 ∴
+      for(const p of [[0,-0.4],[-0.4,0.35],[0.4,0.35]]){ ctx.beginPath(); ctx.arc(cx+p[0]*s, cy+p[1]*s, s*0.16, 0, 7); ctx.fill(); } break;
+    case 'monument': // 記念碑
+      ctx.lineWidth=lw; ctx.beginPath();
+      ctx.moveTo(cx-s*0.18, cy+s*0.5); ctx.lineTo(cx-s*0.12, cy-s*0.5); ctx.lineTo(cx+s*0.12,cy-s*0.5); ctx.lineTo(cx+s*0.18,cy+s*0.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-s*0.4, cy+s*0.5); ctx.lineTo(cx+s*0.4, cy+s*0.5); ctx.stroke(); break;
+    case 'power_st': // 発電所・変電所（歯車風）
+      ctx.lineWidth=Math.max(1,s*0.08); ctx.beginPath(); ctx.arc(cx,cy,s*0.45,0,7); ctx.stroke();
+      for(let a=0;a<8;a++){ const an=a*Math.PI/4; ctx.beginPath(); ctx.moveTo(cx+Math.cos(an)*s*0.45,cy+Math.sin(an)*s*0.45); ctx.lineTo(cx+Math.cos(an)*s*0.7,cy+Math.sin(an)*s*0.7); ctx.stroke(); } break;
+    case 'antenna': // 電波塔（鉄塔・マスト）
+      ctx.lineWidth=lw;
+      ctx.beginPath(); ctx.moveTo(cx, cy-s*0.7); ctx.lineTo(cx, cy+s*0.6); ctx.stroke();
+      ctx.lineWidth=Math.max(1,s*0.08);
+      for (const yy of [-0.25, 0.05, 0.4]) { const w = s*(0.18 + (yy+0.25)*0.5); ctx.beginPath(); ctx.moveTo(cx-w, cy+yy*s); ctx.lineTo(cx+w, cy+yy*s); ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(cx, cy-s*0.7, s*0.1, 0, 7); ctx.fill(); break;
+    case 'library': // 図書館（開いた本）
+      ctx.lineWidth=lw; ctx.beginPath();
+      ctx.moveTo(cx,cy-s*0.45); ctx.quadraticCurveTo(cx-s*0.6,cy-s*0.55,cx-s*0.65,cy+s*0.35);
+      ctx.lineTo(cx,cy+s*0.2); ctx.lineTo(cx,cy-s*0.45);
+      ctx.moveTo(cx,cy-s*0.45); ctx.quadraticCurveTo(cx+s*0.6,cy-s*0.55,cx+s*0.65,cy+s*0.35);
+      ctx.lineTo(cx,cy+s*0.2); ctx.stroke(); break;
+    case 'museum': // 博物館（建物）
+      ctx.lineWidth=lw; ctx.beginPath();
+      ctx.moveTo(cx-s*0.7,cy-s*0.15); ctx.lineTo(cx,cy-s*0.6); ctx.lineTo(cx+s*0.7,cy-s*0.15); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-s*0.6,cy-s*0.15); ctx.lineTo(cx-s*0.6,cy+s*0.5);
+      ctx.moveTo(cx,cy-s*0.15); ctx.lineTo(cx,cy+s*0.5);
+      ctx.moveTo(cx+s*0.6,cy-s*0.15); ctx.lineTo(cx+s*0.6,cy+s*0.5);
+      ctx.moveTo(cx-s*0.75,cy+s*0.5); ctx.lineTo(cx+s*0.75,cy+s*0.5); ctx.stroke(); break;
+    case 'oldhome': // 老人ホーム（家＋杖）
+      ctx.lineWidth=lw; ctx.beginPath();
+      ctx.moveTo(cx-s*0.55,cy+s*0.5); ctx.lineTo(cx-s*0.55,cy-s*0.1); ctx.lineTo(cx,cy-s*0.55);
+      ctx.lineTo(cx+s*0.55,cy-s*0.1); ctx.lineTo(cx+s*0.55,cy+s*0.5); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx,cy+s*0.18,s*0.13,0,7); ctx.fill(); break;
+    // --- 植生 ---
+    case 'veg_ta': // 田
+      ctx.lineWidth=Math.max(1,s*0.1);
+      for(const dx of [-0.35,0.35]){ ctx.beginPath(); ctx.moveTo(cx+dx*s,cy+s*0.4); ctx.lineTo(cx+dx*s,cy-s*0.4); ctx.stroke(); } break;
+    case 'veg_hata': // 畑
+      ctx.lineWidth=Math.max(1,s*0.08);
+      for(const dx of [-0.4,0.0,0.4]){ ctx.beginPath(); ctx.moveTo(cx+dx*s-s*0.18,cy-s*0.15); ctx.lineTo(cx+dx*s,cy+s*0.15); ctx.lineTo(cx+dx*s+s*0.18,cy-s*0.15); ctx.stroke(); } break;
+    case 'veg_cha': // 茶畑
+      for(const p of [[0,-0.35],[-0.35,0.3],[0.35,0.3]]){ ctx.beginPath(); ctx.arc(cx+p[0]*s,cy+p[1]*s,s*0.13,0,7); ctx.fill(); } break;
+    case 'veg_orchard': // 果樹園
+      ctx.lineWidth=Math.max(1,s*0.08); ctx.beginPath(); ctx.arc(cx,cy-s*0.1,s*0.32,0,7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx,cy+s*0.22); ctx.lineTo(cx,cy+s*0.5); ctx.stroke(); break;
+    case 'veg_broad': // 広葉樹林
+      ctx.lineWidth=Math.max(1,s*0.08); ctx.beginPath(); ctx.arc(cx,cy,s*0.4,0,7); ctx.stroke(); break;
+    case 'veg_conifer': // 針葉樹林
+      ctx.lineWidth=Math.max(1,s*0.1); ctx.beginPath(); ctx.moveTo(cx-s*0.4,cy+s*0.4); ctx.lineTo(cx,cy-s*0.45); ctx.lineTo(cx+s*0.4,cy+s*0.4); ctx.stroke(); break;
+    case 'veg_bamboo': // 竹林
+      ctx.lineWidth=Math.max(1,s*0.1); ctx.beginPath(); ctx.moveTo(cx,cy+s*0.5); ctx.lineTo(cx,cy-s*0.5); ctx.stroke();
+      ctx.lineWidth=Math.max(1,s*0.07);
+      ctx.beginPath(); ctx.moveTo(cx,cy-s*0.2); ctx.lineTo(cx+s*0.3,cy-s*0.45); ctx.moveTo(cx,cy+s*0.05); ctx.lineTo(cx+s*0.3,cy-s*0.2); ctx.stroke(); break;
+    case 'veg_waste': // 荒地
+      ctx.lineWidth=Math.max(1,s*0.08);
+      for(const dx of [-0.35,0,0.35]){ ctx.beginPath(); ctx.moveTo(cx+dx*s,cy+s*0.4); ctx.lineTo(cx+dx*s,cy-s*0.1); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(cx-s*0.5,cy+s*0.42); ctx.lineTo(cx+s*0.5,cy+s*0.42); ctx.stroke(); break;
+    default: break;
+  }
+  ctx.restore();
+}
+
+function drawLegend(ctx, xMm, yMm, wMm, hMm, img) {
+  const X = mmToPx(xMm), Y = mmToPx(yMm), W = mmToPx(wMm), H = mmToPx(hMm);
+  ctx.save();
+  ctx.fillStyle = '#fff'; ctx.fillRect(X, Y, W, H);
+  ctx.strokeStyle = '#000'; ctx.lineWidth = mmToPx(0.3); ctx.setLineDash([]); ctx.strokeRect(X, Y, W, H);
+
+  // タイトル
+  ctx.fillStyle = '#000'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  ctx.font = `700 ${mmToPx(3.6)}px "Hiragino Sans","Yu Gothic",sans-serif`;
+  ctx.fillText('凡例', X + W / 2, Y + mmToPx(4.6));
+  ctx.font = `400 ${mmToPx(1.8)}px "Hiragino Sans","Yu Gothic",sans-serif`;
+  ctx.fillStyle = '#555';
+  ctx.fillText('出典: 国土地理院 地形図記号', X + W / 2, Y + mmToPx(8.2));
+
+  // 公式記号画像が使える場合は、それをそのまま掲載（地図と完全一致）。
+  if (img) {
+    const srcW = 800, srcH = 1268; // 記号一覧のうち上部（下部4サンプルを除外）
+    const padX = mmToPx(2);
+    const drawW = W - padX * 2;
+    const drawH = drawW * srcH / srcW;
+    const top = Y + mmToPx(10.5);
+    const maxH = H - mmToPx(12);
+    const finalH = Math.min(drawH, maxH);
+    const finalW = finalH * srcW / srcH;
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, srcW, srcH, X + (W - finalW) / 2, top, finalW, finalH);
+    ctx.restore();
+    return;
+  }
+
+  const entries = [
+    { h: '基準点' },
+    ['tri', '三角点'], ['etri', '電子基準点'], ['sq', '水準点'], ['dot', '標高点'],
+    { h: '道路・鉄道' },
+    ['road2', '2車線以上'], ['road1', '1車線'], ['roadFoot', '徒歩道'],
+    ['roadNat', '国道'], ['roadExp', '高速道路'],
+    ['railJR', '普通鉄道(JR)'], ['railPriv', '私鉄'], ['railSub', '地下鉄'],
+    { h: '境界・その他' },
+    ['bdyPref', '都府県界'], ['bdyCity', '市区町村界'], ['power', '送電線'],
+    { h: '建物・施設' },
+    ['cityhall', '市役所'], ['townhall', '町村役場'],
+    ['police', '警察署'], ['koban', '交番'], ['fire', '消防署'], ['health', '保健所'],
+    ['court', '裁判所'], ['tax', '税務署'],
+    ['post', '郵便局'], ['school', '小中学校'], ['highschool', '高等学校'],
+    ['hosp', '病院'], ['library', '図書館'], ['museum', '博物館'], ['oldhome', '老人ホーム'],
+    ['shrine', '神社'], ['temple', '寺院'], ['onsen', '温泉'],
+    ['lighthouse', '灯台'], ['windmill', '風車'], ['chimney', '煙突'], ['antenna', '電波塔'],
+    ['power_st', '発電所等'], ['castle', '城跡'], ['hist', '史跡・名勝等'],
+    ['monument', '記念碑'], ['anchor', '港湾・漁港'],
+    { h: '植生' },
+    ['veg_ta', '田'], ['veg_hata', '畑'], ['veg_cha', '茶畑'], ['veg_orchard', '果樹園'],
+    ['veg_broad', '広葉樹林'], ['veg_conifer', '針葉樹林'], ['veg_bamboo', '竹林'], ['veg_waste', '荒地'],
+  ];
+
+  // ===== 2列レイアウト ＋ 下部メモ欄 =====
+  const topPad = mmToPx(10.5);
+  const colGap = mmToPx(2);
+  const padX = mmToPx(1.5);
+  const colW = (W - padX * 2 - colGap) / 2;
+  const rowsPerCol = Math.ceil(entries.length / 2);
+  const memoMin = mmToPx(38);           // メモ欄の最低高さ
+  const availSym = H - topPad - memoMin - mmToPx(3);
+  const rh = Math.max(mmToPx(3.4), Math.min(mmToPx(4.4), availSym / rowsPerCol));
+  const s = rh * 0.42;
+  const labelPx = Math.min(mmToPx(2.1), rh * 0.52);
+  const headPx = Math.min(mmToPx(2.3), rh * 0.6);
+
+  entries.forEach((e, i) => {
+    const col = i < rowsPerCol ? 0 : 1;
+    const rowInCol = i - col * rowsPerCol;
+    const colX = X + padX + col * (colW + colGap);
+    const cy = Y + topPad + rowInCol * rh;
+    const midY = cy + rh / 2;
+    if (e.h) {
+      ctx.fillStyle = '#00664B'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = `700 ${headPx}px "Hiragino Sans","Yu Gothic",sans-serif`;
+      ctx.fillText(e.h, colX, midY);
+      ctx.strokeStyle = '#ccc'; ctx.lineWidth = mmToPx(0.15); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(colX, cy + rh - mmToPx(0.3)); ctx.lineTo(colX + colW, cy + rh - mmToPx(0.3)); ctx.stroke();
+    } else {
+      drawLegendIcon(ctx, e[0], colX + mmToPx(3.5), midY, s);
+      ctx.fillStyle = '#000'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = `400 ${labelPx}px "Hiragino Sans","Yu Gothic",sans-serif`;
+      ctx.fillText(e[1], colX + mmToPx(7.5), midY);
+    }
+  });
+
+  // ===== メモ欄（下部） =====
+  let memoTop = Y + topPad + rowsPerCol * rh + mmToPx(3);
+  // 区切り線
+  ctx.strokeStyle = '#000'; ctx.lineWidth = mmToPx(0.3); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(X + padX, memoTop); ctx.lineTo(X + W - padX, memoTop); ctx.stroke();
+  memoTop += mmToPx(1.5);
+  ctx.fillStyle = '#00664B'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.font = `700 ${mmToPx(2.6)}px "Hiragino Sans","Yu Gothic",sans-serif`;
+  ctx.fillText('メモ', X + padX, memoTop + mmToPx(2));
+  // 罫線
+  const lineGap = mmToPx(6);
+  ctx.strokeStyle = '#ddd'; ctx.lineWidth = mmToPx(0.2);
+  for (let ly = memoTop + mmToPx(6); ly < Y + H - mmToPx(2); ly += lineGap) {
+    ctx.beginPath(); ctx.moveTo(X + padX, ly); ctx.lineTo(X + W - padX, ly); ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawRouteOverlay(ctx, mapX, mapY, mapWpx, mapHpx, opts) {
+  if (!routePins.length) return;
+  const proj = makeProj(opts.centerLat, opts.centerLng, opts.mapWmm, opts.mapHmm, opts.scale);
+  const col = routeColors();
+  ctx.save();
+  ctx.beginPath(); ctx.rect(mapX, mapY, mapWpx, mapHpx); ctx.clip();
+  ctx.setLineDash([]);
+
+  // ルート線
+  if (routePins.length >= 2) {
+    ctx.strokeStyle = hexToRgba(col.line, 0.9);
+    ctx.lineWidth = mmToPx(0.5);
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    routePins.forEach((p, i) => {
+      const pt = proj.toPx(p.lat, p.lng);
+      const X = mapX + pt.x, Y = mapY + pt.y;
+      if (i) ctx.lineTo(X, Y); else ctx.moveTo(X, Y);
+    });
+    ctx.stroke();
+  }
+
+  // ピン（印刷ではCPのみ表示。非CPは非表示）
+  let cpNum = 0;
+  routePins.forEach(p => {
+    if (!p.isCP) return;
+    cpNum++;
+    const pt = proj.toPx(p.lat, p.lng);
+    const X = mapX + pt.x, Y = mapY + pt.y;
+    const r = mmToPx(1.7);
+    ctx.beginPath(); ctx.arc(X, Y, r, 0, Math.PI * 2);
+    ctx.fillStyle = col.cp; ctx.fill();
+    ctx.lineWidth = mmToPx(0.3); ctx.strokeStyle = '#fff'; ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = `700 ${mmToPx(2)}px "Hiragino Sans","Yu Gothic","Meiryo",sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(cpNum), X, Y);
+  });
+  ctx.restore();
 }
 
 </script>
