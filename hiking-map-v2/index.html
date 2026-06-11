@@ -386,6 +386,14 @@
   }
   .style-row select, .style-row input[type=color] { margin-top: 0; }
   .style-row:last-child { margin-bottom: 0; }
+  /* 方眼・磁北線などのプルダウンを小さめに */
+  .style-row label { font-size: 12px; }
+  .style-row select {
+    font-size: 12px;
+    padding: 5px 26px 5px 8px;
+    background-position: right 8px center;
+  }
+  .style-row input[type=color] { height: 30px; }
 
   /* Display toggle (segmented control look) */
   .display-toggle {
@@ -691,6 +699,12 @@
 
     <div class="section">
       <h2>場所</h2>
+      <label>住所・地名検索
+        <div class="search-row">
+          <input id="searchInput" type="text" placeholder="例: 皇居、富士山" />
+          <button class="secondary" id="searchBtn">検索</button>
+        </div>
+      </label>
       <div class="coords">
         中心: <b id="centerCoord">未設定</b><br>
         偏角: <b id="declVal">—</b><span id="accuracyVal"></span>
@@ -2975,42 +2989,66 @@ function drawLegend(ctx, xMm, yMm, wMm, hMm, img) {
     ['cityhall', '市役所'], ['townhall', '町村役場'],
     ['police', '警察署'], ['koban', '交番'], ['fire', '消防署'], ['health', '保健所'],
     ['court', '裁判所'], ['tax', '税務署'],
-    ['post', '郵便局'], ['school', '小・中学校'], ['highschool', '高等学校'],
+    ['post', '郵便局'], ['school', '小中学校'], ['highschool', '高等学校'],
     ['hosp', '病院'], ['library', '図書館'], ['museum', '博物館'], ['oldhome', '老人ホーム'],
     ['shrine', '神社'], ['temple', '寺院'], ['onsen', '温泉'],
     ['lighthouse', '灯台'], ['windmill', '風車'], ['chimney', '煙突'], ['antenna', '電波塔'],
-    ['power_st', '発電所・変電所'], ['castle', '城跡'], ['hist', '史跡・名勝・天然記念物'],
+    ['power_st', '発電所等'], ['castle', '城跡'], ['hist', '史跡・名勝等'],
     ['monument', '記念碑'], ['anchor', '港湾・漁港'],
     { h: '植生' },
     ['veg_ta', '田'], ['veg_hata', '畑'], ['veg_cha', '茶畑'], ['veg_orchard', '果樹園'],
     ['veg_broad', '広葉樹林'], ['veg_conifer', '針葉樹林'], ['veg_bamboo', '竹林'], ['veg_waste', '荒地'],
   ];
 
-  const topPad = mmToPx(11);
-  const avail = H - topPad - mmToPx(2);
-  const rh = Math.min(mmToPx(4.6), avail / entries.length);
+  // ===== 2列レイアウト ＋ 下部メモ欄 =====
+  const topPad = mmToPx(10.5);
+  const colGap = mmToPx(2);
+  const padX = mmToPx(1.5);
+  const colW = (W - padX * 2 - colGap) / 2;
+  const rowsPerCol = Math.ceil(entries.length / 2);
+  const memoMin = mmToPx(38);           // メモ欄の最低高さ
+  const availSym = H - topPad - memoMin - mmToPx(3);
+  const rh = Math.max(mmToPx(3.4), Math.min(mmToPx(4.4), availSym / rowsPerCol));
   const s = rh * 0.42;
-  const iconCx = X + mmToPx(5);
-  const labelX = X + mmToPx(9.5);
-  const labelPx = Math.min(mmToPx(2.2), rh * 0.52);
-  let cy = Y + topPad;
+  const labelPx = Math.min(mmToPx(2.1), rh * 0.52);
+  const headPx = Math.min(mmToPx(2.3), rh * 0.6);
 
-  for (const e of entries) {
+  entries.forEach((e, i) => {
+    const col = i < rowsPerCol ? 0 : 1;
+    const rowInCol = i - col * rowsPerCol;
+    const colX = X + padX + col * (colW + colGap);
+    const cy = Y + topPad + rowInCol * rh;
     const midY = cy + rh / 2;
     if (e.h) {
       ctx.fillStyle = '#00664B'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.font = `700 ${Math.min(mmToPx(2.4), rh * 0.6)}px "Hiragino Sans","Yu Gothic",sans-serif`;
-      ctx.fillText(e.h, X + mmToPx(2), midY);
+      ctx.font = `700 ${headPx}px "Hiragino Sans","Yu Gothic",sans-serif`;
+      ctx.fillText(e.h, colX, midY);
       ctx.strokeStyle = '#ccc'; ctx.lineWidth = mmToPx(0.15); ctx.setLineDash([]);
-      ctx.beginPath(); ctx.moveTo(X + mmToPx(2), cy + rh - mmToPx(0.3)); ctx.lineTo(X + W - mmToPx(2), cy + rh - mmToPx(0.3)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(colX, cy + rh - mmToPx(0.3)); ctx.lineTo(colX + colW, cy + rh - mmToPx(0.3)); ctx.stroke();
     } else {
-      drawLegendIcon(ctx, e[0], iconCx, midY, s);
+      drawLegendIcon(ctx, e[0], colX + mmToPx(3.5), midY, s);
       ctx.fillStyle = '#000'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       ctx.font = `400 ${labelPx}px "Hiragino Sans","Yu Gothic",sans-serif`;
-      ctx.fillText(e[1], labelX, midY);
+      ctx.fillText(e[1], colX + mmToPx(7.5), midY);
     }
-    cy += rh;
+  });
+
+  // ===== メモ欄（下部） =====
+  let memoTop = Y + topPad + rowsPerCol * rh + mmToPx(3);
+  // 区切り線
+  ctx.strokeStyle = '#000'; ctx.lineWidth = mmToPx(0.3); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(X + padX, memoTop); ctx.lineTo(X + W - padX, memoTop); ctx.stroke();
+  memoTop += mmToPx(1.5);
+  ctx.fillStyle = '#00664B'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.font = `700 ${mmToPx(2.6)}px "Hiragino Sans","Yu Gothic",sans-serif`;
+  ctx.fillText('メモ', X + padX, memoTop + mmToPx(2));
+  // 罫線
+  const lineGap = mmToPx(6);
+  ctx.strokeStyle = '#ddd'; ctx.lineWidth = mmToPx(0.2);
+  for (let ly = memoTop + mmToPx(6); ly < Y + H - mmToPx(2); ly += lineGap) {
+    ctx.beginPath(); ctx.moveTo(X + padX, ly); ctx.lineTo(X + W - padX, ly); ctx.stroke();
   }
+
   ctx.restore();
 }
 
