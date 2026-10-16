@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta name="description" content="地図上の地点から見た太陽の方位と高度を、指定した日時と1時間ごとに表示します。">
+<meta name="description" content="地図上の地点から見た太陽の方位と高度を、指定した日時と1時間ごとに表示します。ストリートビューに太陽の通り道を重ねて表示できます。">
 <title>太陽方位マップ / Sun Direction Map</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
@@ -65,8 +65,27 @@
 
   /* Layout */
   main { flex: 1; display: flex; min-height: 0; }
-  #mapContainer { flex: 1; min-width: 0; position: relative; background: var(--secondary-system-background); overflow: hidden; }
-  #map { width: 100%; height: 100%; }
+  #mapContainer { flex: 1; min-width: 0; position: relative; background: var(--secondary-system-background); overflow: hidden; display: flex; }
+  #mapPane, #svPane { position: relative; flex: 1 1 0; min-width: 0; height: 100%; overflow: hidden; }
+  #svPane { display: none; background: #1c1c1e; border-left: 2px solid #fff; }
+  #mapContainer.mode-split #svPane, #mapContainer.mode-sv #svPane { display: block; }
+  #mapContainer.mode-sv #mapPane { display: none; }
+  #mapContainer.mode-sv #svPane { border-left: none; }
+  #map, #pano { width: 100%; height: 100%; }
+  #svOverlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+  #svOverlay text {
+    font-family: var(--font-sans); font-size: 12px; font-weight: 700; fill: #fff;
+    paint-order: stroke; stroke: rgba(0,0,0,0.65); stroke-width: 3px; stroke-linejoin: round;
+  }
+  #svCard { position: absolute; top: 12px; left: 12px; z-index: 10; padding: 8px 10px; font-size: 12px; max-width: calc(100% - 90px); }
+  #svCard .row1 { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  #svCard b { font-size: 17px; font-variant-numeric: tabular-nums; }
+  #svCard small { color: var(--label-secondary); font-weight: 600; font-size: 10px; margin-right: 3px; }
+  #svCard .meta { color: var(--label-secondary); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  #svCard .btns { display: flex; gap: 6px; margin-top: 6px; }
+  #viewMode { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 700; padding: 3px; display: none; }
+  #viewMode.show { display: flex; }
+  #viewMode button { font-size: 12px; padding: 5px 10px; }
   #sunOverlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 400; transition: opacity .15s; }
   #sunOverlay.fading { opacity: 0; }
   #sunOverlay text {
@@ -198,6 +217,10 @@
     header .sub { display: none; }
     main { display: block; }
     #mapContainer { width: 100%; height: 56vh; min-height: 300px; position: sticky; top: 49px; z-index: 5; }
+    #viewMode button[data-mode=split] { display: none; }
+    #viewMode { bottom: 26px; }
+    #svCard { padding: 6px 8px; }
+    #svCard b { font-size: 15px; }
     aside { width: 100%; border-left: none; border-top: 1px solid var(--separator); padding: 12px; overflow-y: visible; }
     .map-control button { width: 36px; height: 36px; font-size: 18px; }
     #hud { padding: 6px 10px; min-width: 0; }
@@ -219,7 +242,8 @@
 </header>
 
 <main>
-  <div id="mapContainer">
+  <div id="mapContainer" class="mode-map">
+   <div id="mapPane">
     <div id="map"></div>
     <svg id="sunOverlay" xmlns="http://www.w3.org/2000/svg"></svg>
 
@@ -242,8 +266,29 @@
       <span>地図をクリックして観測地点を指定</span>
       <button class="secondary small" id="pickCancel">キャンセル</button>
     </div>
-    <div id="toast"></div>
     <div id="gsiCredit"><a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a></div>
+   </div>
+   <div id="svPane">
+    <div id="pano"></div>
+    <svg id="svOverlay" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="svCard" class="glass">
+      <div class="row1">
+        <span><small>太陽 方位</small><b id="svAz">—</b></span>
+        <span><small>高度</small><b id="svAlt">—</b></span>
+      </div>
+      <div class="meta" id="svMeta">—</div>
+      <div class="btns">
+        <button class="small" id="svFaceSun">☀ 太陽の方を向く</button>
+        <button class="secondary small" id="svClose">閉じる</button>
+      </div>
+    </div>
+   </div>
+    <div id="viewMode" class="seg glass">
+      <button data-mode="map">地図</button>
+      <button data-mode="split">並べる</button>
+      <button data-mode="sv">ストリートビュー</button>
+    </div>
+    <div id="toast"></div>
   </div>
 
   <aside>
@@ -311,6 +356,25 @@
         <button class="secondary small" id="coordGo">設定</button>
       </div>
       <p class="note">地点は固定されています。地図を動かしたりズームしても地点は変わりません。</p>
+    </div>
+
+    <div class="section">
+      <h2>ストリートビュー</h2>
+      <div class="btn-row">
+        <button id="svOpen">観測地点のストリートビューを開く</button>
+      </div>
+      <div style="margin-top:12px">
+        <div class="inline" style="font-size:13px">
+          <span style="flex:1">方位の補正</span>
+          <b id="svOffsetVal" style="font-variant-numeric:tabular-nums">0.0°</b>
+          <button class="secondary small" id="svOffsetReset">0に戻す</button>
+        </div>
+        <input type="range" id="svOffset" min="-15" max="15" step="0.5" value="0">
+      </div>
+      <p class="note" id="svNote">
+        地図上の人形アイコンをドラッグしても開けます。ストリートビュー内を移動すると観測地点も一緒に動きます。<br>
+        写真の北の向きが数度ずれていることがあります。日の出・日の入りの実写や、方角のわかる目標物と目盛りが合うように「方位の補正」で調整してください。写真に写っている影は撮影日時のものです。
+      </p>
     </div>
 
     <div class="section">
@@ -559,7 +623,7 @@ window.initGoogleMap = function () {
   if (M && M.kind === 'leaflet') return;
   const map = new google.maps.Map(mapEl(), {
     center: { lat: state.lat, lng: state.lng }, zoom: state.zoom,
-    mapTypeControl: false, fullscreenControl: false, streetViewControl: false,
+    mapTypeControl: false, fullscreenControl: false, streetViewControl: true,
     zoomControl: false, rotateControl: false, tilt: 0, clickableIcons: false, gestureHandling: 'greedy',
   });
   const gsiType = (url, name) => new google.maps.ImageMapType({
@@ -594,11 +658,13 @@ window.initGoogleMap = function () {
   ['bounds_changed', 'center_changed', 'zoom_changed', 'drag', 'resize'].forEach(ev => map.addListener(ev, scheduleDraw));
   map.addListener('idle', () => { scheduleDraw(); saveHash(); });
   map.addListener('click', e => onMapClick(e.latLng.lat(), e.latLng.lng()));
+  initStreetView(map);
   onMapReady();
 };
 
 function initLeaflet() {
   const el = resetMapElement();
+  $('svOpen').textContent = 'ストリートビューは Google Maps 表示のときのみ使えます';
   const attr = '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>';
   const layers = {
     gsi_std:   L.tileLayer(TILE_URLS.std,   { attribution: attr, maxZoom: 18, minZoom: 5 }),
@@ -657,6 +723,7 @@ function onMapClick(lat, lng) {
 function setPoint(lat, lng) {
   state.lat = +lat.toFixed(6); state.lng = +lng.toFixed(6);
   render(); saveHash();
+  if (!svSyncing && PV && PV.getVisible()) openSvAtPoint(true);
 }
 function setPickMode(on) {
   pickMode = on;
@@ -678,7 +745,7 @@ function drawOverlay() {
   if (!M) { svg.innerHTML = ''; return; }
   const p = M.project(state.lat, state.lng);
   if (!p) return;
-  const box = $('mapContainer');
+  const box = $('mapPane');
   const W = box.clientWidth, H = box.clientHeight;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   const R = Math.max(80, Math.min(330, Math.min(W, H) * 0.38, Math.min(W, H) / 2 - 44));
@@ -829,6 +896,7 @@ function render() {
 
   drawGraph(day, now);
   if (M) scheduleDraw();
+  scheduleSvDraw();
 }
 
 function drawGraph(day, now) {
@@ -974,11 +1042,264 @@ function saveHash(immediate) {
     p.set('d', state.date); p.set('t', minToHM(state.minutes));
     if (state.tz !== 9) p.set('tz', String(state.tz));
     if (state.mapType) p.set('m', state.mapType);
+    if (PV && PV.getVisible() && PV.getPano()) {
+      const pov = PV.getPov();
+      p.set('sv', PV.getPano()); p.set('h', pov.heading.toFixed(1)); p.set('p', pov.pitch.toFixed(1));
+      p.set('fz', (PV.getZoom() || 1).toFixed(2));
+    }
+    if (svOffset) p.set('ho', String(svOffset));
     history.replaceState(null, '', '#' + p.toString());
   };
   clearTimeout(hashTimer);
   if (immediate === true) write(); else hashTimer = setTimeout(write, 300);
 }
+
+// ============================================================
+// ストリートビュー
+// パノラマは透視投影（ピンホール）として描画されている前提で、
+// 視線方位(heading)・見上げ角(pitch)・ズームから太陽の画面位置を求める。
+// ============================================================
+let PV = null, svService = null, svSyncing = false, viewMode = 'map';
+let svPending = null;   // パノラマ読込後に適用する視線（読込時に写真側の初期値で上書きされるため）
+let svOffset = numOr(hashParams.get('ho'), 0);   // 写真の方位ずれ補正: パノラマの方位 = 真方位 + svOffset
+const svInfo = { date: null };
+const svRestore = hashParams.get('sv') ? {
+  pano: hashParams.get('sv'), heading: numOr(hashParams.get('h'), 0),
+  pitch: numOr(hashParams.get('p'), 0), zoom: numOr(hashParams.get('fz'), 1),
+} : null;
+const isNarrow = () => matchMedia('(max-width: 768px)').matches;
+// ズーム → 画角（度）。画面の長い辺に対する画角で、zoom 1 で 90°、zoom 2 で 53.1°。
+// （実機で視線を回して写真のずれ量から実測して確認済み）
+const svFov = z => 2 * Math.atan(Math.pow(2, 1 - z)) / RAD;
+// 2点間の距離（m）
+function distM(lat1, lng1, lat2, lng2) {
+  const R = 6371000, dLat = (lat2 - lat1) * RAD, dLng = (lng2 - lng1) * RAD;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * RAD) * Math.cos(lat2 * RAD) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function initStreetView(map) {
+  PV = new google.maps.StreetViewPanorama($('pano'), {
+    visible: false, addressControl: false, fullscreenControl: false, showRoadLabels: false,
+    enableCloseButton: false, panControl: false, motionTrackingControl: true,
+  });
+  map.setStreetView(PV);
+  svService = new google.maps.StreetViewService();
+
+  PV.addListener('pov_changed', () => { scheduleSvDraw(); saveHash(); });
+  PV.addListener('zoom_changed', () => { scheduleSvDraw(); saveHash(); });
+  PV.addListener('position_changed', () => {
+    const pos = PV.getPosition();
+    if (pos && PV.getVisible()) { svSyncing = true; setPoint(pos.lat(), pos.lng()); svSyncing = false; }
+    scheduleSvDraw();
+  });
+  PV.addListener('pano_changed', () => {
+    const id = PV.getPano(); svInfo.date = null; svInfo.user = false; renderSvCard();
+    if (!id) return;
+    svService.getPanorama({ pano: id }).then(({ data }) => {
+      if (PV.getPano() !== id) return;
+      svInfo.date = data.imageDate || null;
+      svInfo.user = !/google/i.test(data.copyright || '');
+      renderSvCard();
+    }).catch(() => {});
+  });
+  PV.addListener('status_changed', () => {
+    if (PV.getStatus() !== 'OK' || !svPending) return;
+    const p = svPending; svPending = null;
+    const apply = () => { PV.setPov(p.pov); if (p.zoom !== null) PV.setZoom(p.zoom); };
+    setTimeout(apply, 50); setTimeout(apply, 700);   // 写真側の初期視線が後から入ることがあるため2回
+  });
+  PV.addListener('visible_changed', () => {
+    if (PV.getVisible()) { if (viewMode === 'map') setViewMode('split'); }
+    else setViewMode('map');
+    saveHash(); scheduleSvDraw();
+  });
+
+  $('viewMode').classList.add('show');
+  $('svOpen').disabled = false;
+  if (svRestore) {
+    svPending = { pov: { heading: svRestore.heading, pitch: svRestore.pitch }, zoom: svRestore.zoom };
+    PV.setPano(svRestore.pano);
+    PV.setPov(svPending.pov);
+    PV.setVisible(true);
+  }
+}
+
+async function openSvAtPoint(keepPov) {
+  if (!PV) return toast('ストリートビューは Google Maps 表示のときだけ使えます');
+  const S = google.maps.StreetViewSource || {};
+  const base = { location: { lat: state.lat, lng: state.lng }, preference: google.maps.StreetViewPreference.NEAREST };
+  const tries = [];
+  // まず Google 撮影のパノラマ（方位の精度が高い）、なければ投稿写真も含める
+  if (S.GOOGLE) [50, 300, 1000].forEach(radius => tries.push({ ...base, radius, sources: [S.GOOGLE] }));
+  [50, 300, 1000].forEach(radius => tries.push({ ...base, radius, source: google.maps.StreetViewSource.OUTDOOR }));
+  for (const req of tries) {
+    try {
+      const { data } = await svService.getPanorama(req);
+      const ll = data.location.latLng;
+      // まれに検索半径より遠いパノラマが返ることがあるので距離を確認する
+      if (distM(state.lat, state.lng, ll.lat(), ll.lng()) > req.radius * 1.5) continue;
+      const pov = keepPov && PV.getVisible() ? PV.getPov() : { heading: sunHeading(), pitch: 8 };
+      svPending = { pov, zoom: keepPov ? null : 1 };
+      PV.setPano(data.location.pano);
+      PV.setPov(pov);
+      PV.setVisible(true);
+      return;
+    } catch (e) { /* 次の条件で探す */ }
+  }
+  toast('この地点の近くにストリートビューが見つかりません');
+}
+function sunHeading() { return (current().azimuth + svOffset + 360) % 360; }
+
+function setViewMode(m) {
+  if (m !== 'map' && (!PV || !PV.getVisible())) { openSvAtPoint(); return; }
+  if (m === 'split' && isNarrow()) m = 'sv';
+  viewMode = m;
+  const c = $('mapContainer');
+  c.classList.remove('mode-map', 'mode-split', 'mode-sv'); c.classList.add('mode-' + m);
+  document.querySelectorAll('#viewMode button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  $('svOpen').textContent = PV && PV.getVisible() ? 'ストリートビューを閉じる' : '観測地点のストリートビューを開く';
+  requestAnimationFrame(() => {
+    if (PV) google.maps.event.trigger(PV, 'resize');
+    if (M) M.resize();
+    scheduleDraw(); scheduleSvDraw();
+  });
+}
+
+function renderSvCard() {
+  if (!PV) return;
+  const now = current();
+  $('svAz').textContent = `${now.azimuth.toFixed(0)}° ${dirName(now.azimuth)}`;
+  $('svAlt').textContent = `${now.altitude.toFixed(0)}°`;
+  const pov = PV.getPov();
+  const trueH = ((pov.heading - svOffset) % 360 + 360) % 360;
+  let d = '';
+  if (svInfo.date) { const [y, m] = svInfo.date.split('-'); d = `撮影 ${y}年${m ? +m + '月' : ''}　`; }
+  $('svMeta').textContent = `${svInfo.user ? '投稿写真（方位がずれやすい）　' : ''}${d}視線 ${trueH.toFixed(0)}°（${dirName(trueH)}）　見上げ ${pov.pitch.toFixed(0)}°`;
+}
+
+let svQueued = false;
+function scheduleSvDraw() {
+  if (svQueued) return; svQueued = true;
+  requestAnimationFrame(() => { svQueued = false; drawSv(); });
+}
+
+function drawSv() {
+  const svg = $('svOverlay');
+  if (!PV || !PV.getVisible() || viewMode === 'map') { svg.innerHTML = ''; return; }
+  renderSvCard();
+  const pane = $('svPane'), W = pane.clientWidth, H = pane.clientHeight;
+  if (!W || !H) return;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const pov = PV.getPov(), fov = svFov(PV.getZoom() || 1);
+  const F = (Math.max(W, H) / 2) / Math.tan(fov / 2 * RAD);
+  const h = pov.heading * RAD, pt = pov.pitch * RAD;
+  const fwd = [Math.cos(pt) * Math.sin(h), Math.cos(pt) * Math.cos(h), Math.sin(pt)];
+  const right = [Math.cos(h), -Math.sin(h), 0];
+  const up = [-Math.sin(pt) * Math.sin(h), -Math.sin(pt) * Math.cos(h), Math.cos(pt)];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  // 真方位 az・高度 alt → 画面座標（後ろ側なら null）
+  const proj = (az, alt) => {
+    const A = (az + svOffset) * RAD, E = alt * RAD;
+    const d = [Math.cos(E) * Math.sin(A), Math.cos(E) * Math.cos(A), Math.sin(E)];
+    const z = dot(d, fwd);
+    if (z < 0.05) return null;
+    return [W / 2 + F * dot(d, right) / z, H / 2 - F * dot(d, up) / z];
+  };
+  const f = n => n.toFixed(1);
+  const inView = q => q && q[0] > -50 && q[0] < W + 50 && q[1] > -50 && q[1] < H + 50;
+  const poly = (pts, attrs) => {
+    let out = '', seg = [];
+    const flush = () => { if (seg.length > 1) out += `<polyline points="${seg.join(' ')}" fill="none" ${attrs}/>`; seg = []; };
+    pts.forEach(q => { if (q && Math.abs(q[0]) < 4 * W && Math.abs(q[1]) < 4 * H) seg.push(f(q[0]) + ',' + f(q[1])); else flush(); });
+    flush(); return out;
+  };
+  const day = getDay(), now = current();
+  const trueHeading = pov.heading - svOffset;
+  let s = '';
+
+  // 地平線（高度0°）と方位目盛り
+  const hz = [];
+  for (let a = -100; a <= 100; a += 2) hz.push(proj(trueHeading + a, 0));
+  s += poly(hz, `stroke="rgba(0,0,0,0.45)" stroke-width="4"`);
+  s += poly(hz, `stroke="rgba(255,255,255,0.9)" stroke-width="1.5" stroke-dasharray="6 5"`);
+  const start = Math.ceil((trueHeading - 90) / 5) * 5;
+  for (let a = start; a <= trueHeading + 90; a += 5) {
+    const q = proj(a, 0); if (!inView(q)) continue;
+    const az = ((a % 360) + 360) % 360, major = az % 10 === 0;
+    s += `<line x1="${f(q[0])}" y1="${f(q[1])}" x2="${f(q[0])}" y2="${f(q[1] + (major ? 12 : 6))}" stroke="#fff" stroke-width="${major ? 2 : 1}" style="filter:drop-shadow(0 0 1px #000)"/>`;
+    if (major) {
+      const name = az % 45 === 0 ? DIR16[az / 22.5] : `${az}°`;
+      s += `<text x="${f(q[0])}" y="${f(q[1] + 26)}" text-anchor="middle" style="font-size:${az % 45 === 0 ? 13 : 11}px">${name}</text>`;
+    }
+  }
+  s += (() => { const q = proj(trueHeading + 60, 0); return inView(q) ? `<text x="${f(Math.min(W - 6, q[0]))}" y="${f(q[1] - 6)}" text-anchor="end" style="font-size:10px;font-weight:600">地平線（高度0°）</text>` : ''; })();
+
+  // 日の出・日の入りの位置
+  [[day.rise, day.ev.sunrise, '日の出'], [day.set, day.ev.sunset, '日の入り']].forEach(([pos, ms, name]) => {
+    if (!pos) return;
+    const q = proj(pos.azimuth, 0); if (!inView(q)) return;
+    s += `<line x1="${f(q[0])}" y1="${f(q[1] - 10)}" x2="${f(q[0])}" y2="${f(q[1] + 34)}" stroke="#ff6b8a" stroke-width="2"/>`;
+    s += `<text x="${f(q[0])}" y="${f(q[1] + 48)}" text-anchor="middle" style="fill:#ffd1db">${name} ${msToLocalHM(ms)}</text>`;
+  });
+
+  // 太陽の通り道と1時間ごとの点
+  const path = day.path.map(q => q.altitude > -1 ? proj(q.azimuth, q.altitude) : null);
+  s += poly(path, `stroke="rgba(0,0,0,0.4)" stroke-width="7" stroke-linejoin="round"`);
+  s += poly(path, `stroke="#FFBA20" stroke-width="3" stroke-linejoin="round"`);
+  day.hours.forEach(hp => {
+    if (hp.altitude <= -1) return;
+    const q = proj(hp.azimuth, hp.altitude); if (!inView(q)) return;
+    s += `<circle cx="${f(q[0])}" cy="${f(q[1])}" r="4.5" fill="#064583" stroke="#fff" stroke-width="2"/>`;
+    s += `<text x="${f(q[0])}" y="${f(q[1] - 10)}" text-anchor="middle">${hp.h}時</text>`;
+  });
+
+  // 指定時刻の太陽
+  const q = now.altitude > -1 ? proj(now.azimuth, now.altitude) : null;
+  if (q && q[0] > 0 && q[0] < W && q[1] > 0 && q[1] < H) {
+    const vert = [];
+    for (let k = 0; k <= 12; k++) vert.push(proj(now.azimuth, now.altitude * k / 12));
+    s += poly(vert, `stroke="rgba(255,255,255,0.75)" stroke-width="1.5" stroke-dasharray="3 4"`);
+    for (let k = 0; k < 12; k++) {
+      const a = k * 30 * RAD;
+      s += `<line x1="${f(q[0] + 19 * Math.cos(a))}" y1="${f(q[1] + 19 * Math.sin(a))}" x2="${f(q[0] + 27 * Math.cos(a))}" y2="${f(q[1] + 27 * Math.sin(a))}" stroke="#FFBA20" stroke-width="3" stroke-linecap="round" style="filter:drop-shadow(0 0 1px #000)"/>`;
+    }
+    s += `<circle cx="${f(q[0])}" cy="${f(q[1])}" r="14" fill="rgba(255,186,32,0.35)" stroke="#FFBA20" stroke-width="3" style="filter:drop-shadow(0 0 2px #000)"/>`;
+    s += `<text x="${f(q[0] + 32)}" y="${f(q[1] + 4)}">${minToHM(state.minutes)}　高度 ${now.altitude.toFixed(1)}°</text>`;
+  } else {
+    // 画面外: 端に矢印
+    let diff = ((now.azimuth - trueHeading) % 360 + 540) % 360 - 180;
+    const label = now.altitude < -0.833 ? '太陽（地平線の下）' : '太陽';
+    if (q && Math.abs(diff) < 60) {
+      const above = q[1] < 0;
+      const x = Math.max(60, Math.min(W - 60, q[0])), y = above ? 22 : H - 22;
+      s += `<text x="${f(x)}" y="${f(y + (above ? 4 : 0))}" text-anchor="middle" style="font-size:13px;fill:#FFBA20">${above ? '▲' : '▼'} ${label}</text>`;
+    } else {
+      const left = diff < 0, x = left ? 14 : W - 14;
+      s += `<text x="${x}" y="${f(H / 2)}" text-anchor="${left ? 'start' : 'end'}" style="font-size:13px;fill:#FFBA20">${left ? '◀ ' + label : label + ' ▶'}</text>`;
+    }
+  }
+  svg.innerHTML = s;
+}
+
+$('viewMode').addEventListener('click', e => { const b = e.target.closest('button[data-mode]'); if (b) setViewMode(b.dataset.mode); });
+$('svOpen').disabled = true;
+$('svOpen').onclick = () => { if (PV && PV.getVisible()) PV.setVisible(false); else openSvAtPoint(); };
+$('svClose').onclick = () => PV && PV.setVisible(false);
+$('svFaceSun').onclick = () => {
+  if (!PV) return;
+  const now = current();
+  PV.setPov({ heading: sunHeading(), pitch: Math.max(-10, Math.min(60, now.altitude)) });
+};
+function setSvOffset(v) {
+  svOffset = Math.round(v * 2) / 2;
+  $('svOffset').value = svOffset;
+  $('svOffsetVal').textContent = (svOffset > 0 ? '+' : '') + svOffset.toFixed(1) + '°';
+  scheduleSvDraw(); saveHash();
+}
+$('svOffset').addEventListener('input', e => setSvOffset(+e.target.value));
+$('svOffsetReset').onclick = () => setSvOffset(0);
+setSvOffset(svOffset);
 
 // ============================================================
 // トースト
@@ -993,7 +1314,7 @@ function toastOnce(msg) { if (shownOnce.has(msg)) return; shownOnce.add(msg); to
 // ============================================================
 // 起動
 // ============================================================
-new ResizeObserver(() => { if (M) M.resize(); scheduleDraw(); }).observe($('mapContainer'));
+new ResizeObserver(() => { if (M) M.resize(); scheduleDraw(); scheduleSvDraw(); }).observe($('mapContainer'));
 render();
 const key = getApiKey();
 if (key && location.protocol !== 'file:') loadGoogleMaps(key);
