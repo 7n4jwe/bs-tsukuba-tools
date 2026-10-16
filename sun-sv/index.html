@@ -1060,6 +1060,7 @@ function saveHash(immediate) {
 // 視線方位(heading)・見上げ角(pitch)・ズームから太陽の画面位置を求める。
 // ============================================================
 let PV = null, svService = null, svSyncing = false, viewMode = 'map';
+let svPending = null;   // パノラマ読込後に適用する視線（読込時に写真側の初期値で上書きされるため）
 let svOffset = numOr(hashParams.get('ho'), 0);   // 写真の方位ずれ補正: パノラマの方位 = 真方位 + svOffset
 const svInfo = { date: null };
 const svRestore = hashParams.get('sv') ? {
@@ -1093,12 +1094,19 @@ function initStreetView(map) {
     scheduleSvDraw();
   });
   PV.addListener('pano_changed', () => {
-    const id = PV.getPano(); svInfo.date = null; renderSvCard();
+    const id = PV.getPano(); svInfo.date = null; svInfo.user = false; renderSvCard();
     if (!id) return;
     svService.getPanorama({ pano: id }).then(({ data }) => {
       if (PV.getPano() !== id) return;
-      svInfo.date = data.imageDate || null; renderSvCard();
+      svInfo.date = data.imageDate || null;
+      svInfo.user = !/google/i.test(data.copyright || '');
+      renderSvCard();
     }).catch(() => {});
+  });
+  PV.addListener('status_changed', () => {
+    if (PV.getStatus() !== 'OK' || !svPending) return;
+    const p = svPending; svPending = null;
+    setTimeout(() => { PV.setPov(p.pov); if (p.zoom !== null) PV.setZoom(p.zoom); }, 50);
   });
   PV.addListener('visible_changed', () => {
     if (PV.getVisible()) { if (viewMode === 'map') setViewMode('split'); }
@@ -1109,9 +1117,9 @@ function initStreetView(map) {
   $('viewMode').classList.add('show');
   $('svOpen').disabled = false;
   if (svRestore) {
+    svPending = { pov: { heading: svRestore.heading, pitch: svRestore.pitch }, zoom: svRestore.zoom };
     PV.setPano(svRestore.pano);
-    PV.setPov({ heading: svRestore.heading, pitch: svRestore.pitch });
-    PV.setZoom(svRestore.zoom);
+    PV.setPov(svPending.pov);
     PV.setVisible(true);
   }
 }
@@ -1122,10 +1130,8 @@ async function openSvAtPoint(keepPov) {
   const base = { location: { lat: state.lat, lng: state.lng }, preference: google.maps.StreetViewPreference.NEAREST };
   const tries = [];
   // まず Google 撮影のパノラマ（方位の精度が高い）、なければ投稿写真も含める
-  [50, 300, 1000].forEach(radius => {
-    if (S.GOOGLE) tries.push({ ...base, radius, sources: [S.GOOGLE] });
-    tries.push({ ...base, radius, source: google.maps.StreetViewSource.OUTDOOR });
-  });
+  if (S.GOOGLE) [50, 300, 1000].forEach(radius => tries.push({ ...base, radius, sources: [S.GOOGLE] }));
+  [50, 300, 1000].forEach(radius => tries.push({ ...base, radius, source: google.maps.StreetViewSource.OUTDOOR }));
   for (const req of tries) {
     try {
       const { data } = await svService.getPanorama(req);
@@ -1133,9 +1139,9 @@ async function openSvAtPoint(keepPov) {
       // まれに検索半径より遠いパノラマが返ることがあるので距離を確認する
       if (distM(state.lat, state.lng, ll.lat(), ll.lng()) > req.radius * 1.5) continue;
       const pov = keepPov && PV.getVisible() ? PV.getPov() : { heading: sunHeading(), pitch: 8 };
+      svPending = { pov, zoom: keepPov ? null : 1 };
       PV.setPano(data.location.pano);
       PV.setPov(pov);
-      if (!keepPov) PV.setZoom(1);
       PV.setVisible(true);
       return;
     } catch (e) { /* 次の条件で探す */ }
@@ -1168,7 +1174,7 @@ function renderSvCard() {
   const trueH = ((pov.heading - svOffset) % 360 + 360) % 360;
   let d = '';
   if (svInfo.date) { const [y, m] = svInfo.date.split('-'); d = `撮影 ${y}年${m ? +m + '月' : ''}　`; }
-  $('svMeta').textContent = `${d}視線 ${trueH.toFixed(0)}°（${dirName(trueH)}）　見上げ ${pov.pitch.toFixed(0)}°`;
+  $('svMeta').textContent = `${svInfo.user ? '投稿写真（方位がずれやすい）　' : ''}${d}視線 ${trueH.toFixed(0)}°（${dirName(trueH)}）　見上げ ${pov.pitch.toFixed(0)}°`;
 }
 
 let svQueued = false;
