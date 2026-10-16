@@ -83,7 +83,7 @@
   #svCard small { color: var(--label-secondary); font-weight: 600; font-size: 10px; margin-right: 3px; }
   #svCard .meta { color: var(--label-secondary); margin-top: 3px; font-variant-numeric: tabular-nums; }
   #svCard .btns { display: flex; gap: 6px; margin-top: 6px; }
-  #viewMode { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 700; padding: 3px; display: none; }
+  #viewMode { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 700; padding: 3px; display: none; }
   #viewMode.show { display: flex; }
   #viewMode button { font-size: 12px; padding: 5px 10px; }
   #sunOverlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 400; transition: opacity .15s; }
@@ -218,7 +218,7 @@
     main { display: block; }
     #mapContainer { width: 100%; height: 56vh; min-height: 300px; position: sticky; top: 49px; z-index: 5; }
     #viewMode button[data-mode=split] { display: none; }
-    #viewMode { top: auto; bottom: 10px; }
+    #viewMode { bottom: 26px; }
     #svCard { padding: 6px 8px; }
     #svCard b { font-size: 15px; }
     aside { width: 100%; border-left: none; border-top: 1px solid var(--separator); padding: 12px; overflow-y: visible; }
@@ -1067,8 +1067,15 @@ const svRestore = hashParams.get('sv') ? {
   pitch: numOr(hashParams.get('p'), 0), zoom: numOr(hashParams.get('fz'), 1),
 } : null;
 const isNarrow = () => matchMedia('(max-width: 768px)').matches;
-// ズーム → 横方向の画角（度）。zoom 1 で 90°。
+// ズーム → 画角（度）。画面の長い辺に対する画角で、zoom 1 で 90°、zoom 2 で 53.1°。
+// （実機で視線を回して写真のずれ量から実測して確認済み）
 const svFov = z => 2 * Math.atan(Math.pow(2, 1 - z)) / RAD;
+// 2点間の距離（m）
+function distM(lat1, lng1, lat2, lng2) {
+  const R = 6371000, dLat = (lat2 - lat1) * RAD, dLng = (lng2 - lng1) * RAD;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * RAD) * Math.cos(lat2 * RAD) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
 
 function initStreetView(map) {
   PV = new google.maps.StreetViewPanorama($('pano'), {
@@ -1122,6 +1129,9 @@ async function openSvAtPoint(keepPov) {
   for (const req of tries) {
     try {
       const { data } = await svService.getPanorama(req);
+      const ll = data.location.latLng;
+      // まれに検索半径より遠いパノラマが返ることがあるので距離を確認する
+      if (distM(state.lat, state.lng, ll.lat(), ll.lng()) > req.radius * 1.5) continue;
       const pov = keepPov && PV.getVisible() ? PV.getPov() : { heading: sunHeading(), pitch: 8 };
       PV.setPano(data.location.pano);
       PV.setPov(pov);
@@ -1175,7 +1185,7 @@ function drawSv() {
   if (!W || !H) return;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   const pov = PV.getPov(), fov = svFov(PV.getZoom() || 1);
-  const F = (W / 2) / Math.tan(fov / 2 * RAD);
+  const F = (Math.max(W, H) / 2) / Math.tan(fov / 2 * RAD);
   const h = pov.heading * RAD, pt = pov.pitch * RAD;
   const fwd = [Math.cos(pt) * Math.sin(h), Math.cos(pt) * Math.cos(h), Math.sin(pt)];
   const right = [Math.cos(h), -Math.sin(h), 0];
