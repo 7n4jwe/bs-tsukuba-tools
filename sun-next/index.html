@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="地図上の地点から見た太陽の方位と高度を、指定した日時と1時間ごとに表示します。ストリートビューに太陽の通り道を重ねて表示できます。">
+<title>太陽方位マップ / Sun Direction Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root {
+    /* 既存ツール（地形図印刷ツール）と同じ配色: ボーイスカウト日本連盟 公式カラーパレット */
+    --system-background: #FFFFFF;
+    --secondary-system-background: #F2F2F7;
+    --grouped-background: #F2F2F7;
+    --label-primary: #000000;
+    --label-secondary: rgba(60, 60, 67, 0.6);
+    --label-tertiary: rgba(60, 60, 67, 0.3);
+    --separator: rgba(60, 60, 67, 0.12);
+    --separator-opaque: #C6C6C8;
+    --fill-secondary: rgba(120, 120, 128, 0.16);
+    --fill-tertiary: rgba(118, 118, 128, 0.12);
+    --fill-quaternary: rgba(116, 116, 128, 0.08);
+
+    --scout-green:  #00664B;
+    --scout-yellow: #FFBA20;
+    --scout-red:    #C22047;
+    --scout-navy:   #064583;
+    --scout-sky:    #74B2E0;
+
+    --sun:      #FFBA20;
+    --sun-dark: #D98500;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Hiragino Sans", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Menlo", "Consolas", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    font-family: var(--font-sans); font-size: 15px; line-height: 1.4;
+    background: var(--grouped-background); color: var(--label-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+  body { display: flex; flex-direction: column; }
+
+  /* Header */
+  header {
+    padding: 10px 24px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--separator);
+    display: flex; align-items: center; gap: 14px; flex-shrink: 0;
+  }
+  .brand-logo { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .brand-titles { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  header h1 {
+    font-size: 17px; font-weight: 700; letter-spacing: -0.022em; margin: 0;
+    padding-left: 10px; border-left: 3px solid var(--scout-green); line-height: 1.2;
+  }
+  .brand-subtitle { font-size: 12px; color: var(--label-secondary); padding-left: 13px; font-weight: 500; }
+  header .sub { font-size: 12px; color: var(--label-tertiary); margin-left: auto; }
+
+  /* Layout */
+  main { flex: 1; display: flex; min-height: 0; }
+  #mapContainer { flex: 1; min-width: 0; position: relative; background: var(--secondary-system-background); overflow: hidden; display: flex; }
+  #mapPane, #svPane { position: relative; flex: 1 1 0; min-width: 0; height: 100%; overflow: hidden; }
+  #svPane { display: none; background: #1c1c1e; border-left: 2px solid #fff; }
+  #mapContainer.mode-split #svPane, #mapContainer.mode-sv #svPane { display: block; }
+  #mapContainer.mode-sv #mapPane { display: none; }
+  #mapContainer.mode-sv #svPane { border-left: none; }
+  #map, #pano { width: 100%; height: 100%; }
+  #svOverlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+  #svOverlay text {
+    font-family: var(--font-sans); font-size: 12px; font-weight: 700; fill: #fff;
+    paint-order: stroke; stroke: rgba(0,0,0,0.65); stroke-width: 3px; stroke-linejoin: round;
+  }
+  #svCard { position: absolute; top: 12px; left: 12px; z-index: 10; padding: 8px 10px; font-size: 12px; max-width: calc(100% - 90px); }
+  #svCard .row1 { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  #svCard b { font-size: 17px; font-variant-numeric: tabular-nums; }
+  #svCard small { color: var(--label-secondary); font-weight: 600; font-size: 10px; margin-right: 3px; }
+  #svCard .meta { color: var(--label-secondary); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  #svCard .btns { display: flex; gap: 6px; margin-top: 6px; }
+  #viewMode { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 700; padding: 3px; display: none; }
+  #viewMode.show { display: flex; }
+  #viewMode button { font-size: 12px; padding: 5px 10px; }
+  #sunOverlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 400; transition: opacity .15s; }
+  #sunOverlay.fading { opacity: 0; }
+  #sunOverlay text {
+    font-family: var(--font-sans); font-size: 12px; font-weight: 600;
+    paint-order: stroke; stroke: rgba(255,255,255,0.95); stroke-width: 3.5px; stroke-linejoin: round;
+  }
+
+  /* Floating cards on the map */
+  .glass {
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border: 1px solid var(--separator);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+  .map-control { position: absolute; top: 12px; right: 12px; z-index: 500; padding: 4px; display: flex; flex-direction: column; gap: 2px; }
+  .map-control button {
+    background: transparent; color: var(--label-primary); border: none; padding: 0;
+    font-size: 16px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-sm); cursor: pointer; font-weight: 500;
+  }
+  .map-control button:hover { background: var(--fill-tertiary); }
+  .map-control .ctrl-sep { height: 1px; background: var(--separator); margin: 2px 0; }
+
+  #hud { position: absolute; top: 64px; left: 12px; z-index: 500; padding: 8px 12px; min-width: 180px; max-width: 260px; }
+  #hud .place { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 1px; }
+
+  /* 地点検索 */
+  #searchBox {
+    position: absolute; top: 12px; left: 12px; z-index: 620;
+    width: min(380px, calc(100% - 80px));
+    background: #fff; border: 1px solid var(--separator); border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  #searchBox .sbar { display: flex; align-items: center; height: 42px; padding: 0 4px 0 12px; gap: 8px; }
+  #searchBox .sbar svg { flex-shrink: 0; color: var(--label-secondary); }
+  #searchInput {
+    flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+    font-size: 15px; font-family: inherit; color: var(--label-primary); padding: 0; height: 100%;
+  }
+  #searchInput:focus { box-shadow: none; }
+  #searchClear {
+    display: none; width: 30px; height: 30px; padding: 0; border-radius: 50%;
+    background: transparent; color: var(--label-secondary); font-size: 18px; font-weight: 400; line-height: 1;
+  }
+  #searchClear:hover { background: var(--fill-tertiary); color: var(--label-primary); }
+  #searchBox.has-text #searchClear { display: block; }
+  #searchResults { list-style: none; margin: 0; padding: 0; display: none; border-top: 1px solid var(--separator); max-height: 50vh; overflow-y: auto; }
+  #searchBox.open #searchResults { display: block; }
+  #searchResults li[data-i] { display: flex; gap: 10px; align-items: flex-start; padding: 8px 12px; cursor: pointer; }
+  #searchResults li.on { background: rgba(0,102,75,0.08); }
+  #searchResults .ic { width: 16px; text-align: center; color: var(--label-secondary); font-size: 12px; line-height: 20px; flex-shrink: 0; }
+  #searchResults .tx { display: flex; flex-direction: column; min-width: 0; }
+  #searchResults .tx b { font-size: 14px; font-weight: 600; }
+  #searchResults .tx small { font-size: 12px; color: var(--label-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #searchResults li.empty { padding: 10px 12px; font-size: 13px; color: var(--label-secondary); }
+  #searchResults li.src { padding: 4px 12px 6px; font-size: 10px; color: var(--label-tertiary); text-align: right; }
+  #hud .t { font-size: 12px; color: var(--label-secondary); font-weight: 600; }
+  #hud .v { display: flex; gap: 14px; margin-top: 2px; }
+  #hud .v div { display: flex; flex-direction: column; }
+  #hud .v small { font-size: 10px; color: var(--label-secondary); font-weight: 600; letter-spacing: .04em; }
+  #hud .v b { font-size: 20px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  #hud .v b em { font-style: normal; font-size: 12px; font-weight: 600; color: var(--label-secondary); margin-left: 3px; }
+  #hud.below b { color: var(--label-secondary); }
+
+  #pickBanner {
+    position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 600;
+    padding: 8px 10px 8px 14px; display: none; align-items: center; gap: 10px; font-size: 13px; font-weight: 600;
+    white-space: nowrap;
+  }
+  #pickBanner.show { display: flex; }
+  #toast {
+    position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 650;
+    background: rgba(0,0,0,0.78); color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 999px;
+    opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; max-width: 92%;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  #toast.show { opacity: 1; }
+  #gsiCredit {
+    position: absolute; left: 6px; bottom: 4px; z-index: 450; font-size: 10px; color: #333;
+    background: rgba(255,255,255,0.75); padding: 1px 5px; border-radius: 3px; display: none;
+  }
+  #gsiCredit a { color: inherit; }
+
+  /* Sidebar */
+  aside { width: 380px; background: var(--grouped-background); border-left: 1px solid var(--separator); padding: 16px; overflow-y: auto; flex-shrink: 0; }
+  .section { background: var(--system-background); border-radius: var(--radius-lg); padding: 12px; margin-bottom: 10px; }
+  .section h2 { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--label-secondary); margin: 0 0 10px; }
+  .note { font-size: 12px; color: var(--label-secondary); margin: 8px 0 0; line-height: 1.5; }
+  label.row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; font-size: 13px; cursor: pointer; }
+  label.row:last-child { margin-bottom: 0; }
+  .swatch { width: 18px; height: 4px; border-radius: 2px; display: inline-block; margin-left: auto; }
+
+  input[type=text], input[type=date], input[type=time], select {
+    padding: 6px 8px; border: 1px solid var(--separator); border-radius: var(--radius-sm);
+    background: var(--system-background); font-size: 14px; font-family: inherit; color: var(--label-primary);
+    min-width: 0;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--scout-green); box-shadow: 0 0 0 3px rgba(0,102,75,0.18); }
+  input[type=checkbox] {
+    -webkit-appearance: none; appearance: none; width: 18px; height: 18px; margin: 0;
+    border: 1.5px solid var(--separator-opaque); border-radius: 5px; background: #fff; position: relative; flex-shrink: 0; cursor: pointer;
+  }
+  input[type=checkbox]:checked { background: var(--scout-green); border-color: var(--scout-green); }
+  input[type=checkbox]:checked::after {
+    content: ""; position: absolute; left: 5px; top: 1px; width: 6px; height: 11px;
+    border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+  }
+  input[type=range] { width: 100%; accent-color: var(--sun-dark); margin: 10px 0 2px; }
+
+  button {
+    padding: 7px 12px; border: none; background: var(--scout-green); color: #fff;
+    font-family: inherit; font-size: 13px; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer;
+  }
+  button:hover { background: #004F39; }
+  button:active { opacity: .7; }
+  button.secondary { background: var(--fill-tertiary); color: var(--label-primary); }
+  button.secondary:hover { background: var(--fill-secondary); }
+  button.small { padding: 5px 9px; font-size: 12px; }
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn-row > * { flex: 1 1 auto; }
+  .inline { display: flex; gap: 6px; align-items: center; }
+  .inline > input, .inline > select { flex: 1; }
+
+  .seg { display: flex; background: var(--fill-tertiary); border-radius: 8px; padding: 2px; gap: 2px; flex-wrap: wrap; }
+  .seg button { flex: 1 1 auto; background: transparent; color: var(--label-primary); font-weight: 500; font-size: 12px; padding: 5px 6px; border-radius: 6px; }
+  .seg button:hover { background: rgba(255,255,255,0.6); }
+  .seg button.on { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); font-weight: 600; }
+
+  /* Readout */
+  .readout { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .readout .cell { background: var(--fill-quaternary); border-radius: var(--radius-md); padding: 8px 10px; }
+  .readout small { display: block; font-size: 11px; color: var(--label-secondary); font-weight: 600; }
+  .readout b { font-size: 24px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .readout .sub2 { font-size: 12px; color: var(--label-secondary); margin-top: 1px; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; margin-top: 10px; }
+  .kv dt { color: var(--label-secondary); }
+  .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+
+  #graph { width: 100%; height: auto; display: block; touch-action: none; cursor: crosshair; user-select: none; }
+  #graph text { font-family: var(--font-sans); font-size: 10px; fill: var(--label-secondary); }
+
+  table.hours { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  table.hours th { font-size: 11px; color: var(--label-secondary); font-weight: 600; text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--separator); }
+  table.hours th:first-child, table.hours td:first-child { text-align: left; }
+  table.hours td { text-align: right; padding: 5px 6px; border-bottom: 1px solid var(--separator); }
+  table.hours tr.data { cursor: pointer; }
+  table.hours tr.data:hover td { background: var(--fill-quaternary); }
+  table.hours tr.cur td { background: rgba(255,186,32,0.18); font-weight: 600; }
+  .bar { display: inline-block; height: 6px; border-radius: 3px; background: var(--sun); vertical-align: middle; margin-right: 6px; }
+
+  .leaflet-container { font-family: var(--font-sans); }
+
+  @media (max-width: 768px) {
+    html, body { height: auto; min-height: 100%; }
+    body { display: block; }
+    header { padding: 8px 14px; gap: 10px; position: sticky; top: 0; z-index: 1000; }
+    .brand-logo { width: 32px; height: 32px; }
+    header h1 { font-size: 15px; padding-left: 8px; }
+    header .sub { display: none; }
+    main { display: block; }
+    #mapContainer { width: 100%; height: 56vh; min-height: 300px; position: sticky; top: 49px; z-index: 5; }
+    #viewMode button[data-mode=split] { display: none; }
+    #viewMode { bottom: 26px; }
+    #svCard { padding: 6px 8px; }
+    #svCard b { font-size: 15px; }
+    aside { width: 100%; border-left: none; border-top: 1px solid var(--separator); padding: 12px; overflow-y: visible; }
+    .map-control button { width: 36px; height: 36px; font-size: 18px; }
+    #hud { padding: 6px 10px; min-width: 0; top: 60px; left: 10px; max-width: 200px; }
+    #searchBox { top: 10px; left: 10px; width: calc(100% - 80px); }
+    #searchInput { font-size: 16px; }
+    #hud .v b { font-size: 17px; }
+    #sunOverlay text { font-size: 11px; }
+    #toast { white-space: normal; text-align: center; border-radius: 14px; width: max-content; max-width: 88%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="data:image/jpeg;base64,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" class="brand-logo" alt="ボーイスカウトつくば第1団">
+  <div class="brand-titles">
+    <h1>太陽方位マップ</h1>
+    <span class="brand-subtitle">ボーイスカウトつくば第1団</span>
+  </div>
+  <span class="sub">Google Maps ＋ 国土地理院タイル</span>
+</header>
+
+<main>
+  <div id="mapContainer" class="mode-map">
+   <div id="mapPane">
+    <div id="map"></div>
+    <svg id="sunOverlay" xmlns="http://www.w3.org/2000/svg"></svg>
+
+    <div id="searchBox" role="search">
+      <div class="sbar">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5.2" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="11" y1="11" x2="14.5" y2="14.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <input type="text" id="searchInput" placeholder="住所・施設名で検索" autocomplete="off" enterkeyhint="search" aria-label="住所・施設名で検索" spellcheck="false">
+        <button id="searchClear" type="button" title="入力を消す" aria-label="入力を消す">×</button>
+      </div>
+      <ul id="searchResults" role="listbox"></ul>
+    </div>
+
+    <div id="hud" class="glass">
+      <div class="place" id="hudPlace" hidden></div>
+      <div class="t" id="hudTime">—</div>
+      <div class="v">
+        <div><small>方位</small><b id="hudAz">—</b></div>
+        <div><small>高度</small><b id="hudAlt">—</b></div>
+      </div>
+    </div>
+
+    <div class="map-control glass">
+      <button data-act="zoom-in" title="ズームイン">+</button>
+      <button data-act="zoom-out" title="ズームアウト">−</button>
+      <div class="ctrl-sep"></div>
+      <button data-act="recenter" title="観測地点を地図の中央へ">◎</button>
+    </div>
+
+    <div id="pickBanner" class="glass">
+      <span>地図をクリックして観測地点を指定</span>
+      <button class="secondary small" id="pickCancel">キャンセル</button>
+    </div>
+    <div id="gsiCredit"><a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a></div>
+   </div>
+   <div id="svPane">
+    <div id="pano"></div>
+    <svg id="svOverlay" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="svCard" class="glass">
+      <div class="row1">
+        <span><small>太陽 方位</small><b id="svAz">—</b></span>
+        <span><small>高度</small><b id="svAlt">—</b></span>
+      </div>
+      <div class="meta" id="svMeta">—</div>
+      <div class="btns">
+        <button class="small" id="svFaceSun">☀ 太陽の方を向く</button>
+        <button class="secondary small" id="svClose">閉じる</button>
+      </div>
+    </div>
+   </div>
+    <div id="viewMode" class="seg glass">
+      <button data-mode="map">地図</button>
+      <button data-mode="split">並べる</button>
+      <button data-mode="sv">ストリートビュー</button>
+    </div>
+    <div id="toast"></div>
+  </div>
+
+  <aside>
+    <div class="section">
+      <h2>太陽の位置</h2>
+      <div class="readout">
+        <div class="cell">
+          <small>方位（真北から時計回り）</small>
+          <b id="rAz">—</b>
+          <div class="sub2" id="rAzSub">—</div>
+        </div>
+        <div class="cell">
+          <small>高度（地平線からの角度）</small>
+          <b id="rAlt">—</b>
+          <div class="sub2" id="rAltSub">—</div>
+        </div>
+      </div>
+      <dl class="kv">
+        <dt>日の出</dt><dd id="kRise">—</dd>
+        <dt>南中</dt><dd id="kNoon">—</dd>
+        <dt>日の入り</dt><dd id="kSet">—</dd>
+        <dt>昼の長さ</dt><dd id="kLen">—</dd>
+      </dl>
+    </div>
+
+    <div class="section">
+      <h2>日時</h2>
+      <div class="inline">
+        <button class="secondary small" id="dayPrev" title="前の日">◀</button>
+        <input type="date" id="dateInput">
+        <button class="secondary small" id="dayNext" title="次の日">▶</button>
+      </div>
+      <div class="inline" style="margin-top:8px">
+        <input type="time" id="timeInput" step="60">
+        <select id="tzSelect" title="時刻の基準"></select>
+      </div>
+      <input type="range" id="timeSlider" min="0" max="1439" step="1">
+      <div class="btn-row">
+        <button class="secondary small" id="hourPrev">−1時間</button>
+        <button class="secondary small" id="hourNext">+1時間</button>
+        <button class="secondary small" id="playBtn">▶ 再生</button>
+        <button class="small" id="nowBtn">現在</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>1日の太陽高度</h2>
+      <svg id="graph" viewBox="0 0 340 150"></svg>
+      <p class="note">グラフをクリック・ドラッグしても時刻を変えられます。</p>
+    </div>
+
+    <div class="section">
+      <h2>観測地点</h2>
+      <dl class="kv" style="margin-top:0">
+        <dt id="kPlaceDt" hidden>場所</dt><dd id="kPlace" hidden></dd>
+        <dt>緯度・経度</dt><dd id="kLatLng">—</dd>
+        <dt>磁気偏角</dt><dd id="kDecl">—</dd>
+      </dl>
+      <div class="btn-row" style="margin-top:10px">
+        <button id="pickBtn">地図をクリックして移動</button>
+        <button class="secondary" id="centerBtn">地図の中央にする</button>
+        <button class="secondary" id="geoBtn">現在地</button>
+      </div>
+      <p class="note">地図左上の検索窓に住所・施設名・緯度経度（例: 36.0835, 140.0764）を入れても地点を移動できます。地点は固定されていて、地図を動かしたりズームしても変わりません。</p>
+    </div>
+
+    <div class="section">
+      <h2>ストリートビュー</h2>
+      <div class="btn-row">
+        <button id="svOpen">観測地点のストリートビューを開く</button>
+      </div>
+      <div style="margin-top:12px">
+        <div class="inline" style="font-size:13px">
+          <span style="flex:1">方位の補正</span>
+          <b id="svOffsetVal" style="font-variant-numeric:tabular-nums">0.0°</b>
+          <button class="secondary small" id="svOffsetReset">0に戻す</button>
+        </div>
+        <input type="range" id="svOffset" min="-15" max="15" step="0.5" value="0">
+      </div>
+      <p class="note" id="svNote">
+        地図上の人形アイコンをドラッグしても開けます。ストリートビュー内を移動すると観測地点も一緒に動きます。<br>
+        写真の北の向きが数度ずれていることがあります。日の出・日の入りの実写や、方角のわかる目標物と目盛りが合うように「方位の補正」で調整してください。写真に写っている影は撮影日時のものです。
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>表示</h2>
+      <label class="row"><input type="checkbox" data-opt="hours" checked>1時間ごとの方位線<span class="swatch" style="background:var(--scout-navy)"></span></label>
+      <label class="row"><input type="checkbox" data-opt="path" checked>太陽の通り道（中心に近いほど高い）<span class="swatch" style="background:var(--sun)"></span></label>
+      <label class="row"><input type="checkbox" data-opt="rings" checked>高度の目盛り円（30° / 60°）</label>
+      <label class="row"><input type="checkbox" data-opt="riseset" checked>日の出・日の入りの方位<span class="swatch" style="background:var(--scout-red)"></span></label>
+      <label class="row"><input type="checkbox" data-opt="shadow">影の向き<span class="swatch" style="background:#444"></span></label>
+      <div style="margin-top:10px">
+        <div class="seg" id="mapTypes"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>1時間ごとの方位と高度</h2>
+      <table class="hours">
+        <thead><tr><th>時刻</th><th>方位</th><th></th><th>高度</th></tr></thead>
+        <tbody id="hourTable"></tbody>
+      </table>
+      <p class="note">行をクリックするとその時刻を表示します。</p>
+    </div>
+
+    <div class="section">
+      <h2>共有</h2>
+      <button class="secondary" id="copyUrl" style="width:100%">この地点・日時のURLをコピー</button>
+      <p class="note">
+        太陽位置はNOAAの計算式（誤差おおむね0.05°以内）。高度は大気による浮き上がりを含む見かけの高度、日の出・日の入りは太陽の上端が地平線に接する時刻です（山や建物は考慮しません）。磁気偏角は国土地理院の近似式（2020.0年値）で、国内のみ表示します。
+      </p>
+    </div>
+  </aside>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ============================================================
+// 太陽位置計算（NOAA Solar Calculator のアルゴリズム）
+// 精度: 方位・高度とも おおむね ±0.01°（1800〜2100年）
+// 方位角は真北=0°、時計回り。高度は大気差（屈折）補正込みの見かけの高度。
+// ============================================================
+const Solar = (() => {
+  const RAD = Math.PI / 180, DEG = 180 / Math.PI;
+  const sin = d => Math.sin(d * RAD), cos = d => Math.cos(d * RAD), tan = d => Math.tan(d * RAD);
+  const mod = (a, n) => ((a % n) + n) % n;
+
+  function sunParams(ms) {
+    const jd = ms / 86400000 + 2440587.5;
+    const T = (jd - 2451545.0) / 36525;
+    const L0 = mod(280.46646 + T * (36000.76983 + T * 0.0003032), 360);
+    const M = 357.52911 + T * (35999.05029 - 0.0001537 * T);
+    const e = 0.016708634 - T * (0.000042037 + 0.0000001267 * T);
+    const C = sin(M) * (1.914602 - T * (0.004817 + 0.000014 * T))
+            + sin(2 * M) * (0.019993 - 0.000101 * T)
+            + sin(3 * M) * 0.000289;
+    const trueLong = L0 + C;
+    const omega = 125.04 - 1934.136 * T;
+    const lambda = trueLong - 0.00569 - 0.00478 * sin(omega);
+    const eps0 = 23 + (26 + (21.448 - T * (46.815 + T * (0.00059 - T * 0.001813))) / 60) / 60;
+    const eps = eps0 + 0.00256 * cos(omega);
+    const decl = Math.asin(sin(eps) * sin(lambda)) * DEG;
+    const y = tan(eps / 2) ** 2;
+    const eot = 4 * DEG * (y * sin(2 * L0) - 2 * e * sin(M) + 4 * e * y * sin(M) * cos(2 * L0)
+              - 0.5 * y * y * sin(4 * L0) - 1.25 * e * e * sin(2 * M)); // 分
+    return { decl, eot };
+  }
+
+  function refraction(elev) {
+    if (elev > 85) return 0;
+    const te = tan(elev);
+    let r;
+    if (elev > 5) r = 58.1 / te - 0.07 / te ** 3 + 0.000086 / te ** 5;
+    else if (elev > -0.575) r = 1735 + elev * (-518.2 + elev * (103.4 + elev * (-12.79 + elev * 0.711)));
+    else r = -20.774 / te;
+    return r / 3600;
+  }
+
+  // ms: UTCミリ秒, lat/lng: 度
+  function position(ms, lat, lng) {
+    const { decl, eot } = sunParams(ms);
+    const utcMin = mod(ms / 60000, 1440);
+    const tst = mod(utcMin + eot + 4 * lng, 1440);
+    let ha = tst / 4 - 180;
+    if (ha < -180) ha += 360;
+    const cosZ = Math.min(1, Math.max(-1, sin(lat) * sin(decl) + cos(lat) * cos(decl) * cos(ha)));
+    const zenith = Math.acos(cosZ) * DEG;
+    const geoAlt = 90 - zenith;
+    const az = mod(Math.atan2(sin(ha), cos(ha) * sin(lat) - tan(decl) * cos(lat)) * DEG + 180, 360);
+    return { azimuth: az, altitude: geoAlt + refraction(geoAlt), geoAltitude: geoAlt, hourAngle: ha, declination: decl, eot };
+  }
+
+  // 日の出・日の入り（太陽上縁が地平線、屈折34'込み = 幾何高度 -0.833°）、南中
+  // dayStartMs: その日の現地0:00のUTCミリ秒
+  function dayEvents(dayStartMs, lat, lng) {
+    const H0 = -0.833;
+    const f = t => position(t, lat, lng).geoAltitude - H0;
+    const step = 10 * 60000, end = dayStartMs + 86400000;
+    const res = { sunrise: null, sunset: null, noon: null, noonAlt: null };
+    let prevT = dayStartMs, prevV = f(prevT);
+    for (let t = dayStartMs + step; t <= end; t += step) {
+      const v = f(t);
+      if ((prevV < 0) !== (v < 0)) {
+        let a = prevT, b = t, va = prevV;
+        for (let i = 0; i < 30; i++) {
+          const m = (a + b) / 2, vm = f(m);
+          if ((va < 0) === (vm < 0)) { a = m; va = vm; } else b = m;
+        }
+        const tc = (a + b) / 2;
+        if (prevV < 0) { if (res.sunrise === null) res.sunrise = tc; }
+        else { if (res.sunset === null || res.sunset < res.sunrise) res.sunset = tc; }
+      }
+      prevT = t; prevV = v;
+    }
+    // 南中（時角 = 0 の瞬間）
+    const h = t => position(t, lat, lng).hourAngle;
+    for (let t = dayStartMs; t < end; t += step) {
+      const ha = h(t), hb = h(t + step);
+      if (ha < 0 && hb >= 0 && hb - ha < 180) {
+        let a = t, b = t + step;
+        for (let i = 0; i < 30; i++) { const m = (a + b) / 2; if (h(m) < 0) a = m; else b = m; }
+        res.noon = (a + b) / 2;
+        break;
+      }
+    }
+    if (res.noon !== null) res.noonAlt = position(res.noon, lat, lng).altitude;
+    // 白夜/極夜
+    if (res.sunrise === null && res.sunset === null) res.polar = f(dayStartMs) > 0 ? 'day' : 'night';
+    return res;
+  }
+
+  return { position, dayEvents, refraction };
+})();
+</script>
+<script>
+// ============================================================
+// 設定
+// ============================================================
+// 既存ツール（hiking-map）と同じAPIキー。URLの #apikey=... で上書き可能。
+const DEFAULT_API_KEY = 'AIzaSyDaBeljApVdsOH3OOlygwtSmxU8LF0foAQ';
+const DEFAULT_CENTER = { lat: 36.0835, lng: 140.0764 }; // つくば市役所付近
+const TILE_URLS = {
+  std:   'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
+  pale:  'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
+  photo: 'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
+};
+const RAD = Math.PI / 180;
+const DIR16 = ['北','北北東','北東','東北東','東','東南東','南東','南南東','南','南南西','南西','西南西','西','西北西','北西','北北西'];
+const $ = id => document.getElementById(id);
+
+// ============================================================
+// 状態（URLハッシュから復元）
+// ============================================================
+const hashParams = new URLSearchParams(location.hash.slice(1));
+const numOr = (v, d) => (v !== null && v !== '' && isFinite(+v)) ? +v : d;
+const state = {
+  lat: numOr(hashParams.get('lat'), DEFAULT_CENTER.lat),
+  lng: numOr(hashParams.get('lng'), DEFAULT_CENTER.lng),
+  zoom: numOr(hashParams.get('z'), 15),
+  tz: numOr(hashParams.get('tz'), 9),
+  date: /^\d{4}-\d{2}-\d{2}$/.test(hashParams.get('d') || '') ? hashParams.get('d') : null,
+  minutes: /^\d{1,2}:\d{2}$/.test(hashParams.get('t') || '') ? hmToMin(hashParams.get('t')) : null,
+  mapType: hashParams.get('m') || null,
+  place: hashParams.get('name') || null,   // 検索で選んだ場所の名前
+  placeLL: null,
+  opts: { hours: true, path: true, rings: true, riseset: true, shadow: false },
+};
+try { Object.assign(state.opts, JSON.parse(localStorage.getItem('sunmap.opts') || '{}')); } catch (e) {}
+if (state.date === null || state.minutes === null) setNow(state.date === null, state.minutes === null);
+if (state.place) state.placeLL = [state.lat, state.lng];
+
+function hmToMin(s) { const [h, m] = s.split(':').map(Number); return Math.min(1439, h * 60 + m); }
+function minToHM(m) { m = Math.round(m); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+function setNow(setDate = true, setTime = true) {
+  const d = new Date(Date.now() + state.tz * 3600e3);
+  if (setDate) state.date = d.toISOString().slice(0, 10);
+  if (setTime) state.minutes = d.getUTCHours() * 60 + d.getUTCMinutes();
+}
+function dayStartMs() {
+  const [y, m, d] = state.date.split('-').map(Number);
+  return Date.UTC(y, m - 1, d) - state.tz * 3600e3;
+}
+function msToLocalHM(ms) { return minToHM(((ms - dayStartMs()) / 60000)); }
+function shiftDate(days) {
+  const [y, m, d] = state.date.split('-').map(Number);
+  state.date = new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+const dirName = az => DIR16[Math.round(az / 22.5) % 16];
+const fmtDeg = (v, n = 1) => v.toFixed(n) + '°';
+const inJapan = (lat, lng) => lat > 20 && lat < 46.5 && lng > 122 && lng < 154;
+// 偏角近似式（国土地理院・磁気図2020.0年値）西偏を正
+function calcDeclination(phi, lambda) {
+  const dPhi = phi - 37.0, dLam = lambda - 138.0;
+  return ((8 * 60 + 15.822) + 18.462 * dPhi - 7.726 * dLam + 0.007 * dPhi * dPhi
+          - 0.007 * dPhi * dLam - 0.655 * dLam * dLam) / 60.0;
+}
+
+// ============================================================
+// 太陽の計算（日付・地点が変わったときだけ1日分を再計算）
+// ============================================================
+let dayCache = null;
+function getDay() {
+  const key = [state.date, state.tz, state.lat.toFixed(5), state.lng.toFixed(5)].join('|');
+  if (dayCache && dayCache.key === key) return dayCache;
+  const t0 = dayStartMs();
+  const hours = [];
+  for (let h = 0; h <= 23; h++) {
+    const ms = t0 + h * 3600e3;
+    hours.push({ h, ms, ...Solar.position(ms, state.lat, state.lng) });
+  }
+  const path = [];
+  for (let m = 0; m <= 1440; m += 5) path.push({ m, ...Solar.position(t0 + m * 60000, state.lat, state.lng) });
+  const ev = Solar.dayEvents(t0, state.lat, state.lng);
+  const at = ms => ms === null ? null : Solar.position(ms, state.lat, state.lng);
+  dayCache = { key, hours, path, ev, rise: at(ev.sunrise), set: at(ev.sunset) };
+  return dayCache;
+}
+const current = () => Solar.position(dayStartMs() + state.minutes * 60000, state.lat, state.lng);
+
+// ============================================================
+// 地図（Google Maps が使えなければ Leaflet＋地理院タイル）
+// ============================================================
+let M = null;        // 地図アダプタ
+let pickMode = false;
+const mapEl = () => $('map');
+
+function getApiKey() { return new URLSearchParams(location.hash.slice(1)).get('apikey') || DEFAULT_API_KEY; }
+
+function loadGoogleMaps(key) {
+  window.gm_authFailure = () => fallbackToLeaflet('Google Mapsが使えないため、地理院地図で表示しています');
+  const s = document.createElement('script');
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=initGoogleMap&loading=async`;
+  s.async = true;
+  s.onerror = () => fallbackToLeaflet('Google Mapsを読み込めないため、地理院地図で表示しています');
+  document.head.appendChild(s);
+}
+
+function resetMapElement() {
+  const old = mapEl(); const el = document.createElement('div'); el.id = 'map';
+  old.replaceWith(el); return el;
+}
+
+function fallbackToLeaflet(msg) {
+  if (M && M.kind === 'leaflet') return;
+  if (M && M.kind === 'google') { state.zoom = M.getZoom(); M.destroy(); M = null; }
+  initLeaflet();
+  if (msg) toast(msg, 4500);
+}
+
+window.initGoogleMap = function () {
+  if (M && M.kind === 'leaflet') return;
+  const map = new google.maps.Map(mapEl(), {
+    center: { lat: state.lat, lng: state.lng }, zoom: state.zoom,
+    mapTypeControl: false, fullscreenControl: false, streetViewControl: true,
+    zoomControl: false, rotateControl: false, tilt: 0, clickableIcons: false, gestureHandling: 'greedy',
+  });
+  const gsiType = (url, name) => new google.maps.ImageMapType({
+    getTileUrl: (c, z) => url.replace('{z}', z).replace('{x}', c.x).replace('{y}', c.y),
+    tileSize: new google.maps.Size(256, 256), maxZoom: 18, minZoom: 5, name,
+  });
+  map.mapTypes.set('gsi_std', gsiType(TILE_URLS.std, '地理院 標準'));
+  map.mapTypes.set('gsi_pale', gsiType(TILE_URLS.pale, '地理院 淡色'));
+  map.mapTypes.set('gsi_photo', gsiType(TILE_URLS.photo, '地理院 写真'));
+
+  const ov = new google.maps.OverlayView();
+  ov.onAdd = () => {}; ov.onRemove = () => {}; ov.draw = () => scheduleDraw();
+  ov.setMap(map);
+
+  M = {
+    kind: 'google',
+    types: [['roadmap', 'Google'], ['hybrid', 'Google 航空'], ['gsi_std', '地理院 標準'], ['gsi_pale', '地理院 淡色'], ['gsi_photo', '地理院 写真']],
+    getCenter: () => ({ lat: map.getCenter().lat(), lng: map.getCenter().lng() }),
+    getZoom: () => map.getZoom(),
+    project: (lat, lng) => {
+      const pr = ov.getProjection(); if (!pr) return null;
+      const p = pr.fromLatLngToContainerPixel(new google.maps.LatLng(lat, lng));
+      return p ? { x: p.x, y: p.y } : null;
+    },
+    panTo: (lat, lng) => map.panTo({ lat, lng }),
+    fit: (lat, lng, vp) => {
+      if (vp) {
+        map.fitBounds(vp, 40);
+        google.maps.event.addListenerOnce(map, 'idle', () => { if (map.getZoom() > 17) map.setZoom(17); map.panTo({ lat, lng }); });
+      } else { map.setZoom(16); map.panTo({ lat, lng }); }
+    },
+    zoomBy: d => map.setZoom(map.getZoom() + d),
+    setType: t => map.setMapTypeId(t),
+    setCursor: c => map.setOptions({ draggableCursor: c || null }),
+    resize: () => {},
+    destroy: () => { ov.setMap(null); google.maps.event.clearInstanceListeners(map); resetMapElement(); },
+  };
+  ['bounds_changed', 'center_changed', 'zoom_changed', 'drag', 'resize'].forEach(ev => map.addListener(ev, scheduleDraw));
+  map.addListener('idle', () => { scheduleDraw(); saveHash(); });
+  map.addListener('click', e => onMapClick(e.latLng.lat(), e.latLng.lng()));
+  initStreetView(map);
+  onMapReady();
+};
+
+function initLeaflet() {
+  const el = resetMapElement();
+  $('svOpen').textContent = 'ストリートビューは Google Maps 表示のときのみ使えます';
+  const attr = '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>';
+  const layers = {
+    gsi_std:   L.tileLayer(TILE_URLS.std,   { attribution: attr, maxZoom: 18, minZoom: 5 }),
+    gsi_pale:  L.tileLayer(TILE_URLS.pale,  { attribution: attr, maxZoom: 18, minZoom: 5 }),
+    gsi_photo: L.tileLayer(TILE_URLS.photo, { attribution: attr, maxZoom: 18, minZoom: 5 }),
+  };
+  const map = L.map(el, { zoomControl: false }).setView([state.lat, state.lng], Math.min(18, state.zoom));
+  map.attributionControl.setPrefix(false);
+  let cur = null;
+  const svg = $('sunOverlay');
+  M = {
+    kind: 'leaflet',
+    types: [['gsi_std', '地理院 標準'], ['gsi_pale', '地理院 淡色'], ['gsi_photo', '地理院 写真']],
+    getCenter: () => { const c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
+    getZoom: () => map.getZoom(),
+    project: (lat, lng) => { const p = map.latLngToContainerPoint([lat, lng]); return { x: p.x, y: p.y }; },
+    panTo: (lat, lng) => map.panTo([lat, lng]),
+    fit: (lat, lng, vp) => {
+      map.setView([lat, lng], vp ? Math.min(17, map.getBoundsZoom([[vp.south, vp.west], [vp.north, vp.east]])) : 16);
+    },
+    zoomBy: d => map.setZoom(map.getZoom() + d),
+    setType: t => { const l = layers[t] || layers.gsi_std; if (cur) map.removeLayer(cur); cur = l.addTo(map); },
+    setCursor: c => { el.style.cursor = c || ''; },
+    resize: () => map.invalidateSize(),
+  };
+  map.on('move zoom resize viewreset', scheduleDraw);
+  map.on('zoomstart', () => svg.classList.add('fading'));
+  map.on('zoomend', () => { svg.classList.remove('fading'); scheduleDraw(); });
+  map.on('moveend', saveHash);
+  map.on('click', e => onMapClick(e.latlng.lat, e.latlng.lng));
+  onMapReady();
+}
+
+function onMapReady() {
+  const types = M.types.map(t => t[0]);
+  if (!types.includes(state.mapType)) state.mapType = types[0];
+  buildMapTypeButtons();
+  applyMapType();
+  render();
+}
+function buildMapTypeButtons() {
+  const seg = $('mapTypes'); seg.innerHTML = '';
+  M.types.forEach(([id, name]) => {
+    const b = document.createElement('button'); b.textContent = name; b.dataset.type = id;
+    b.onclick = () => { state.mapType = id; applyMapType(); saveHash(); };
+    seg.appendChild(b);
+  });
+}
+function applyMapType() {
+  M.setType(state.mapType);
+  document.querySelectorAll('#mapTypes button').forEach(b => b.classList.toggle('on', b.dataset.type === state.mapType));
+  $('gsiCredit').style.display = (M.kind === 'google' && state.mapType.startsWith('gsi')) ? 'block' : 'none';
+}
+
+function onMapClick(lat, lng) {
+  if (pickMode) { setPickMode(false); setPoint(lat, lng); return; }
+  toastOnce('地点は固定中です。「地図をクリックして移動」で変更できます');
+}
+function setPoint(lat, lng, name) {
+  state.lat = +lat.toFixed(6); state.lng = +lng.toFixed(6);
+  if (name) { state.place = name; state.placeLL = [state.lat, state.lng]; }
+  else if (!svSyncing) { state.place = null; state.placeLL = null; }
+  render(); saveHash();
+  if (!svSyncing && PV && PV.getVisible()) openSvAtPoint(true);
+}
+function setPickMode(on) {
+  pickMode = on;
+  $('pickBanner').classList.toggle('show', on);
+  if (M) M.setCursor(on ? 'crosshair' : null);
+}
+
+// ============================================================
+// 地図上の描画（SVGオーバーレイ・画面座標）
+// 地図は北が上・メルカトル（正角）なので、画面上の角度＝真方位。
+// ============================================================
+let drawQueued = false;
+function scheduleDraw() {
+  if (drawQueued) return; drawQueued = true;
+  requestAnimationFrame(() => { drawQueued = false; drawOverlay(); });
+}
+function drawOverlay() {
+  const svg = $('sunOverlay');
+  if (!M) { svg.innerHTML = ''; return; }
+  const p = M.project(state.lat, state.lng);
+  if (!p) return;
+  const box = $('mapPane');
+  const W = box.clientWidth, H = box.clientHeight;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const R = Math.max(80, Math.min(330, Math.min(W, H) * 0.38, Math.min(W, H) / 2 - 44));
+  const pt = (az, r) => [p.x + r * Math.sin(az * RAD), p.y - r * Math.cos(az * RAD)];
+  const rAlt = alt => R * (90 - Math.max(0, Math.min(90, alt))) / 90;
+  const f = n => n.toFixed(1);
+  const line = (az, r0, r1, attrs) => { const a = pt(az, r0), b = pt(az, r1); return `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" ${attrs}/>`; };
+  const anchor = az => { const s = Math.sin(az * RAD); return s > 0.35 ? 'start' : s < -0.35 ? 'end' : 'middle'; };
+  const label = (az, r, txt, attrs = '', dy = 0) => {
+    const [x, y] = pt(az, r); const c = Math.cos(az * RAD);
+    const yy = y + (c > 0.35 ? -2 : c < -0.35 ? 10 : 4) + dy;
+    return `<text x="${f(x)}" y="${f(yy)}" text-anchor="${anchor(az)}" ${attrs}>${txt}</text>`;
+  };
+  const day = getDay(), now = current(), o = state.opts;
+  let s = '';
+
+  // 地平線の円と高度目盛り
+  s += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(R)}" fill="rgba(255,255,255,0.12)" stroke="rgba(6,69,131,0.55)" stroke-width="1.3"/>`;
+  if (o.rings) {
+    [30, 60].forEach(a => {
+      s += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(rAlt(a))}" fill="none" stroke="rgba(6,69,131,0.45)" stroke-width="1" stroke-dasharray="4 4"/>`;
+      s += `<text x="${f(p.x + 4)}" y="${f(p.y - rAlt(a) - 3)}" fill="#064583" style="font-size:10px">${a}°</text>`;
+    });
+  }
+  // 方位の目盛り（10°ごと）と東西南北
+  for (let a = 0; a < 360; a += 10) s += line(a, R - (a % 90 ? 4 : 9), R, `stroke="rgba(6,69,131,0.6)" stroke-width="${a % 90 ? 1 : 2}"`);
+  [['北', 0], ['東', 90], ['南', 180], ['西', 270]].forEach(([n, a]) => {
+    const [x, y] = pt(a, R - 18);
+    s += `<text x="${f(x)}" y="${f(y + 4)}" text-anchor="middle" fill="${a === 0 ? '#C22047' : '#064583'}">${n}</text>`;
+  });
+
+  // 日の出・日の入り
+  if (o.riseset) {
+    [[day.rise, day.ev.sunrise, '日の出'], [day.set, day.ev.sunset, '日の入り']].forEach(([pos, ms, name]) => {
+      if (!pos) return;
+      s += line(pos.azimuth, 0, R + 4, `stroke="#C22047" stroke-width="2" stroke-dasharray="7 5"`);
+      // 線に沿って文字を置く（左右どちらでも読める向きに）
+      const [lx, ly] = pt(pos.azimuth, R * 0.58);
+      let rot = pos.azimuth - 90; if (rot > 90) rot -= 180; if (rot < -90) rot += 180;
+      s += `<text x="${f(lx)}" y="${f(ly)}" dy="-5" text-anchor="middle" fill="#C22047" transform="rotate(${f(rot)} ${f(lx)} ${f(ly)})">${name} ${msToLocalHM(ms)}</text>`;
+    });
+  }
+
+  // 1時間ごとの方位線
+  if (o.hours) {
+    day.hours.forEach(hp => {
+      if (hp.altitude <= 0) return;
+      s += line(hp.azimuth, 10, R, `stroke="rgba(6,69,131,0.6)" stroke-width="1.5"`);
+    });
+  }
+  // 太陽の通り道（中心＝天頂、円周＝地平線）
+  if (o.path) {
+    const segs = []; let cur = [];
+    day.path.forEach(q => {
+      if (q.altitude > 0) cur.push(pt(q.azimuth, rAlt(q.altitude)).map(f).join(','));
+      else if (cur.length) { segs.push(cur); cur = []; }
+    });
+    if (cur.length) segs.push(cur);
+    segs.forEach(c => {
+      s += `<polyline points="${c.join(' ')}" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>`;
+      s += `<polyline points="${c.join(' ')}" fill="none" stroke="#FFBA20" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
+    });
+  }
+  if (o.hours) {
+    day.hours.forEach(hp => {
+      if (hp.altitude <= 0) return;
+      if (o.path) { const [x, y] = pt(hp.azimuth, rAlt(hp.altitude)); s += `<circle cx="${f(x)}" cy="${f(y)}" r="3.6" fill="#064583" stroke="#fff" stroke-width="1.5"/>`; }
+      s += label(hp.azimuth, R + 9, `${hp.h}時`, `fill="#064583"`);
+      s += label(hp.azimuth, R + 9, `${Math.round(hp.altitude)}°`, `fill="#064583" style="font-size:10px;font-weight:500"`, 12);
+    });
+  }
+
+  // 影の向き
+  if (o.shadow && now.altitude > 0) {
+    const sa = (now.azimuth + 180) % 360;
+    s += line(sa, 0, R * 0.7, `stroke="rgba(255,255,255,0.9)" stroke-width="7" stroke-linecap="round"`);
+    s += line(sa, 0, R * 0.7, `stroke="#333" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 7"`);
+    s += label(sa, R * 0.7 + 8, '影', `fill="#333"`);
+  }
+
+  // 指定時刻の太陽
+  if (now.altitude > -0.833) {
+    s += line(now.azimuth, 0, R + 6, `stroke="#fff" stroke-width="8" stroke-linecap="round"`);
+    s += line(now.azimuth, 0, R + 6, `stroke="#D98500" stroke-width="4" stroke-linecap="round"`);
+    const [sx, sy] = pt(now.azimuth, rAlt(now.altitude));
+    for (let k = 0; k < 8; k++) {
+      const a = k * 45 * RAD;
+      s += `<line x1="${f(sx + 13 * Math.cos(a))}" y1="${f(sy + 13 * Math.sin(a))}" x2="${f(sx + 18 * Math.cos(a))}" y2="${f(sy + 18 * Math.sin(a))}" stroke="#D98500" stroke-width="2.5" stroke-linecap="round"/>`;
+    }
+    s += `<circle cx="${f(sx)}" cy="${f(sy)}" r="10" fill="#FFBA20" stroke="#fff" stroke-width="2.5"/>`;
+  } else {
+    s += line(now.azimuth, 0, R, `stroke="rgba(60,60,67,0.55)" stroke-width="2.5" stroke-dasharray="3 5"`);
+  }
+
+  // 観測地点
+  s += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="9" fill="#fff" stroke="rgba(0,0,0,0.25)" stroke-width="1"/>`;
+  s += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="6" fill="#00664B"/>`;
+  svg.innerHTML = s;
+}
+
+// ============================================================
+// パネル
+// ============================================================
+function render() {
+  const day = getDay(), now = current(), ev = day.ev;
+  const above = now.altitude > -0.833;
+
+  // 入力欄
+  $('dateInput').value = state.date;
+  $('timeInput').value = minToHM(state.minutes);
+  $('timeSlider').value = state.minutes;
+  $('tzSelect').value = String(state.tz);
+
+  // 読み取り
+  const decl = inJapan(state.lat, state.lng) ? calcDeclination(state.lat, state.lng) : null;
+  $('rAz').textContent = fmtDeg(now.azimuth);
+  $('rAzSub').textContent = dirName(now.azimuth) + (decl !== null ? ` ／ 磁方位 ${fmtDeg((now.azimuth + decl + 360) % 360, 0)}` : '');
+  $('rAlt').textContent = fmtDeg(now.altitude);
+  $('rAltSub').textContent = now.altitude > 0.5
+    ? `1mの棒の影 ${(1 / Math.tan(now.altitude * RAD)).toFixed(1)} m`
+    : (above ? '日の出・日の入りの頃' : '地平線の下（夜）');
+
+  const [y, mo, d] = state.date.split('-').map(Number);
+  const wd = '日月火水木金土'[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()];
+  $('hudTime').textContent = `${mo}月${d}日(${wd}) ${minToHM(state.minutes)}`;
+  $('hudAz').innerHTML = `${now.azimuth.toFixed(0)}°<em>${dirName(now.azimuth)}</em>`;
+  $('hudAlt').textContent = `${now.altitude.toFixed(0)}°`;
+  $('hud').classList.toggle('below', !above);
+
+  const tAz = (ms, pos) => ms === null ? '—' : `${msToLocalHM(ms)}　方位 ${fmtDeg(pos.azimuth)}（${dirName(pos.azimuth)}）`;
+  $('kRise').textContent = ev.polar ? (ev.polar === 'day' ? '沈まない（白夜）' : '昇らない（極夜）') : tAz(ev.sunrise, day.rise);
+  $('kSet').textContent = ev.polar ? '—' : tAz(ev.sunset, day.set);
+  $('kNoon').textContent = ev.noon === null ? '—' : `${msToLocalHM(ev.noon)}　高度 ${fmtDeg(ev.noonAlt)}`;
+  if (ev.sunrise !== null && ev.sunset !== null && ev.sunset > ev.sunrise) {
+    const len = Math.round((ev.sunset - ev.sunrise) / 60000);
+    $('kLen').textContent = `${Math.floor(len / 60)}時間${len % 60}分`;
+  } else $('kLen').textContent = ev.polar === 'day' ? '24時間' : ev.polar === 'night' ? '0分' : '—';
+
+  // 検索した場所から 300m 以上離れたら名前は外す（ストリートビューで歩いた場合など）
+  if (state.place && state.placeLL && distM(state.placeLL[0], state.placeLL[1], state.lat, state.lng) > 300) { state.place = null; state.placeLL = null; }
+  ['kPlaceDt', 'kPlace', 'hudPlace'].forEach(id => { $(id).hidden = !state.place; });
+  $('kPlace').textContent = $('hudPlace').textContent = state.place || '';
+  $('hudPlace').title = state.place || '';
+  $('kLatLng').textContent = `${state.lat.toFixed(5)}, ${state.lng.toFixed(5)}`;
+  $('kDecl').textContent = decl !== null ? `西偏 ${decl.toFixed(1)}°（コンパスの値 ＝ 真方位 ＋ ${decl.toFixed(1)}°）` : '—（国外）';
+
+  // 1時間ごとの表
+  const curH = Math.floor(state.minutes / 60);
+  $('hourTable').innerHTML = day.hours.filter(h => h.altitude > 0).map(h =>
+    `<tr class="data${h.h === curH ? ' cur' : ''}" data-h="${h.h}"><td>${h.h}:00</td><td>${fmtDeg(h.azimuth)}</td><td style="color:var(--label-secondary)">${dirName(h.azimuth)}</td>` +
+    `<td><span class="bar" style="width:${Math.max(2, h.altitude * 0.6).toFixed(0)}px"></span>${fmtDeg(h.altitude)}</td></tr>`
+  ).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--label-secondary)">この日は太陽が昇りません</td></tr>';
+
+  drawGraph(day, now);
+  if (M) scheduleDraw();
+  scheduleSvDraw();
+}
+
+function drawGraph(day, now) {
+  const W = 340, H = 150, L = 26, Rm = 8, T = 10, B = 22;
+  const top = Math.max(30, Math.ceil(((day.ev.noonAlt ?? 30) + 5) / 10) * 10), bot = -20;
+  const X = m => L + (W - L - Rm) * m / 1440;
+  const Y = a => T + (H - T - B) * (top - Math.max(bot, a)) / (top - bot);
+  let s = `<rect x="${L}" y="${Y(0)}" width="${W - L - Rm}" height="${Y(bot) - Y(0)}" fill="rgba(6,69,131,0.07)"/>`;
+  for (let a = 0; a <= top; a += (top > 60 ? 30 : 10)) {
+    s += `<line x1="${L}" x2="${W - Rm}" y1="${Y(a)}" y2="${Y(a)}" stroke="${a === 0 ? 'rgba(6,69,131,0.5)' : 'rgba(60,60,67,0.12)'}"/>`;
+    s += `<text x="${L - 4}" y="${Y(a) + 3}" text-anchor="end">${a}°</text>`;
+  }
+  for (let h = 0; h <= 24; h++) {
+    const x = X(h * 60);
+    s += `<line x1="${x}" x2="${x}" y1="${Y(0) - 2}" y2="${Y(0) + 2}" stroke="rgba(6,69,131,0.5)"/>`;
+    if (h % 3 === 0) {
+      s += `<line x1="${x}" x2="${x}" y1="${T}" y2="${H - B}" stroke="rgba(60,60,67,0.08)"/>`;
+      s += `<text x="${x}" y="${H - 6}" text-anchor="middle">${h}</text>`;
+    }
+  }
+  const pts = day.path.map(q => `${X(q.m).toFixed(1)},${Y(q.altitude).toFixed(1)}`).join(' ');
+  s += `<polyline points="${pts}" fill="none" stroke="#FFBA20" stroke-width="2.5" stroke-linejoin="round"/>`;
+  day.hours.forEach(h => { if (h.altitude > 0) s += `<circle cx="${X(h.h * 60)}" cy="${Y(h.altitude)}" r="2.4" fill="#064583"/>`; });
+  const cx = X(state.minutes), cy = Y(now.altitude);
+  s += `<line x1="${cx}" x2="${cx}" y1="${T}" y2="${H - B}" stroke="#D98500" stroke-width="1.5"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="5.5" fill="#FFBA20" stroke="#D98500" stroke-width="2"/>`;
+  const tx = Math.min(W - Rm - 2, Math.max(L + 2, cx + (cx > W / 2 ? -8 : 8)));
+  s += `<text x="${tx}" y="${T + 9}" text-anchor="${cx > W / 2 ? 'end' : 'start'}" style="fill:#000;font-weight:600">${minToHM(state.minutes)}　${now.altitude.toFixed(1)}°</text>`;
+  $('graph').innerHTML = s;
+  $('graph').dataset.l = L; $('graph').dataset.r = Rm;
+}
+
+// ============================================================
+// UIイベント
+// ============================================================
+function setMinutes(m, save = true) { state.minutes = Math.max(0, Math.min(1439, Math.round(m))); render(); if (save) saveHash(); }
+
+$('dateInput').addEventListener('change', e => { if (e.target.value) { state.date = e.target.value; render(); saveHash(); } });
+$('dayPrev').onclick = () => { shiftDate(-1); render(); saveHash(); };
+$('dayNext').onclick = () => { shiftDate(1); render(); saveHash(); };
+$('timeInput').addEventListener('change', e => { if (e.target.value) setMinutes(hmToMin(e.target.value)); });
+$('timeSlider').addEventListener('input', e => setMinutes(+e.target.value, false));
+$('timeSlider').addEventListener('change', () => saveHash());
+$('hourPrev').onclick = () => setMinutes(state.minutes - 60);
+$('hourNext').onclick = () => setMinutes(state.minutes + 60);
+$('nowBtn').onclick = () => { stopPlay(); setNow(); render(); saveHash(); };
+
+let playTimer = null;
+function stopPlay() { if (playTimer) { clearInterval(playTimer); playTimer = null; $('playBtn').textContent = '▶ 再生'; saveHash(); } }
+$('playBtn').onclick = () => {
+  if (playTimer) return stopPlay();
+  if (state.minutes >= 1435) state.minutes = 0;
+  $('playBtn').textContent = '■ 停止';
+  playTimer = setInterval(() => {
+    if (state.minutes >= 1439) return stopPlay();
+    setMinutes(state.minutes + 4, false);
+  }, 40);
+};
+
+(function buildTz() {
+  const sel = $('tzSelect');
+  const list = [];
+  for (let h = -12; h <= 14; h++) list.push(h);
+  list.push(5.5, 9.5, 5.75, 3.5, 4.5, 6.5, 10.5);
+  list.sort((a, b) => a - b).forEach(h => {
+    const o = document.createElement('option'); o.value = String(h);
+    const sign = h >= 0 ? '+' : '−', a = Math.abs(h);
+    o.textContent = (h === 9 ? '日本時間 ' : '') + `UTC${sign}${Math.floor(a)}${a % 1 ? ':' + String(Math.round(a % 1 * 60)).padStart(2, '0') : ''}`;
+    sel.appendChild(o);
+  });
+  sel.addEventListener('change', () => { state.tz = +sel.value; render(); saveHash(); });
+})();
+
+// グラフのドラッグで時刻を変更
+(function graphDrag() {
+  const g = $('graph'); let dragging = false;
+  const toMin = e => {
+    const r = g.getBoundingClientRect(), sc = 340 / r.width;
+    const x = (e.clientX - r.left) * sc, L = +g.dataset.l, Rm = +g.dataset.r;
+    return (x - L) / (340 - L - Rm) * 1440;
+  };
+  g.addEventListener('pointerdown', e => { dragging = true; g.setPointerCapture(e.pointerId); stopPlay(); setMinutes(Math.round(toMin(e) / 5) * 5, false); });
+  g.addEventListener('pointermove', e => { if (dragging) setMinutes(Math.round(toMin(e) / 5) * 5, false); });
+  g.addEventListener('pointerup', () => { dragging = false; saveHash(); });
+})();
+
+$('hourTable').addEventListener('click', e => { const tr = e.target.closest('tr[data-h]'); if (tr) setMinutes(+tr.dataset.h * 60); });
+
+document.querySelectorAll('[data-opt]').forEach(cb => {
+  cb.checked = !!state.opts[cb.dataset.opt];
+  cb.addEventListener('change', () => {
+    state.opts[cb.dataset.opt] = cb.checked;
+    try { localStorage.setItem('sunmap.opts', JSON.stringify(state.opts)); } catch (e) {}
+    scheduleDraw();
+  });
+});
+
+document.querySelectorAll('.map-control [data-act]').forEach(b => b.addEventListener('click', () => {
+  if (!M) return;
+  const a = b.dataset.act;
+  if (a === 'zoom-in') M.zoomBy(1);
+  else if (a === 'zoom-out') M.zoomBy(-1);
+  else if (a === 'recenter') M.panTo(state.lat, state.lng);
+}));
+
+$('pickBtn').onclick = () => setPickMode(!pickMode);
+$('pickCancel').onclick = () => setPickMode(false);
+$('centerBtn').onclick = () => { if (M) { const c = M.getCenter(); setPoint(c.lat, c.lng); } };
+$('geoBtn').onclick = () => {
+  if (!navigator.geolocation) return toast('この端末では現在地を取得できません');
+  toast('現在地を取得中…', 8000);
+  navigator.geolocation.getCurrentPosition(
+    pos => { setPoint(pos.coords.latitude, pos.coords.longitude); if (M) M.panTo(state.lat, state.lng); toast('現在地を観測地点にしました'); },
+    () => toast('現在地を取得できませんでした'),
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+};
+
+$('copyUrl').onclick = async () => {
+  saveHash(true);
+  const url = location.href.replace(/([#&])apikey=[^&]*&?/, '$1').replace(/[#&]$/, '');
+  try { await navigator.clipboard.writeText(url); toast('URLをコピーしました'); }
+  catch (e) { prompt('このURLをコピーしてください', url); }
+};
+
+// ============================================================
+// URLハッシュに状態を保存（APIキー指定は保持）
+// ============================================================
+let hashTimer = null;
+function saveHash(immediate) {
+  const write = () => {
+    const p = new URLSearchParams();
+    const key = new URLSearchParams(location.hash.slice(1)).get('apikey');
+    if (key) p.set('apikey', key);
+    p.set('lat', state.lat.toFixed(6)); p.set('lng', state.lng.toFixed(6));
+    if (M) p.set('z', String(M.getZoom()));
+    p.set('d', state.date); p.set('t', minToHM(state.minutes));
+    if (state.tz !== 9) p.set('tz', String(state.tz));
+    if (state.mapType) p.set('m', state.mapType);
+    if (PV && PV.getVisible() && PV.getPano()) {
+      const pov = PV.getPov();
+      p.set('sv', PV.getPano()); p.set('h', pov.heading.toFixed(1)); p.set('p', pov.pitch.toFixed(1));
+      p.set('fz', (PV.getZoom() || 1).toFixed(2));
+    }
+    if (svOffset) p.set('ho', String(svOffset));
+    if (state.place) p.set('name', state.place);
+    history.replaceState(null, '', '#' + p.toString());
+  };
+  clearTimeout(hashTimer);
+  if (immediate === true) write(); else hashTimer = setTimeout(write, 300);
+}
+
+// ============================================================
+// ストリートビュー
+// パノラマは透視投影（ピンホール）として描画されている前提で、
+// 視線方位(heading)・見上げ角(pitch)・ズームから太陽の画面位置を求める。
+// ============================================================
+let PV = null, svService = null, svSyncing = false, viewMode = 'map';
+let svPending = null;   // パノラマ読込後に適用する視線（読込時に写真側の初期値で上書きされるため）
+let svOffset = numOr(hashParams.get('ho'), 0);   // 写真の方位ずれ補正: パノラマの方位 = 真方位 + svOffset
+const svInfo = { date: null };
+const svRestore = hashParams.get('sv') ? {
+  pano: hashParams.get('sv'), heading: numOr(hashParams.get('h'), 0),
+  pitch: numOr(hashParams.get('p'), 0), zoom: numOr(hashParams.get('fz'), 1),
+} : null;
+const isNarrow = () => matchMedia('(max-width: 768px)').matches;
+// ズーム → 画角（度）。画面の長い辺に対する画角で、zoom 1 で 90°、zoom 2 で 53.1°。
+// （実機で視線を回して写真のずれ量から実測して確認済み）
+const svFov = z => 2 * Math.atan(Math.pow(2, 1 - z)) / RAD;
+// 2点間の距離（m）
+function distM(lat1, lng1, lat2, lng2) {
+  const R = 6371000, dLat = (lat2 - lat1) * RAD, dLng = (lng2 - lng1) * RAD;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * RAD) * Math.cos(lat2 * RAD) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function initStreetView(map) {
+  PV = new google.maps.StreetViewPanorama($('pano'), {
+    visible: false, addressControl: false, fullscreenControl: false, showRoadLabels: false,
+    enableCloseButton: false, panControl: false, motionTrackingControl: true,
+  });
+  map.setStreetView(PV);
+  svService = new google.maps.StreetViewService();
+
+  PV.addListener('pov_changed', () => { scheduleSvDraw(); saveHash(); });
+  PV.addListener('zoom_changed', () => { scheduleSvDraw(); saveHash(); });
+  PV.addListener('position_changed', () => {
+    const pos = PV.getPosition();
+    if (pos && PV.getVisible()) { svSyncing = true; setPoint(pos.lat(), pos.lng()); svSyncing = false; }
+    scheduleSvDraw();
+  });
+  PV.addListener('pano_changed', () => {
+    const id = PV.getPano(); svInfo.date = null; svInfo.user = false; renderSvCard();
+    if (!id) return;
+    svService.getPanorama({ pano: id }).then(({ data }) => {
+      if (PV.getPano() !== id) return;
+      svInfo.date = data.imageDate || null;
+      svInfo.user = !/google/i.test(data.copyright || '');
+      renderSvCard();
+    }).catch(() => {});
+  });
+  PV.addListener('status_changed', () => {
+    if (PV.getStatus() !== 'OK' || !svPending) return;
+    const p = svPending; svPending = null;
+    const apply = () => { PV.setPov(p.pov); if (p.zoom !== null) PV.setZoom(p.zoom); };
+    setTimeout(apply, 50); setTimeout(apply, 700);   // 写真側の初期視線が後から入ることがあるため2回
+  });
+  PV.addListener('visible_changed', () => {
+    if (PV.getVisible()) { if (viewMode === 'map') setViewMode('split'); }
+    else setViewMode('map');
+    saveHash(); scheduleSvDraw();
+  });
+
+  $('viewMode').classList.add('show');
+  $('svOpen').disabled = false;
+  if (svRestore) {
+    svPending = { pov: { heading: svRestore.heading, pitch: svRestore.pitch }, zoom: svRestore.zoom };
+    PV.setPano(svRestore.pano);
+    PV.setPov(svPending.pov);
+    PV.setVisible(true);
+  }
+}
+
+async function openSvAtPoint(keepPov) {
+  if (!PV) return toast('ストリートビューは Google Maps 表示のときだけ使えます');
+  const S = google.maps.StreetViewSource || {};
+  const base = { location: { lat: state.lat, lng: state.lng }, preference: google.maps.StreetViewPreference.NEAREST };
+  const tries = [];
+  // まず Google 撮影のパノラマ（方位の精度が高い）、なければ投稿写真も含める
+  if (S.GOOGLE) [50, 300, 1000].forEach(radius => tries.push({ ...base, radius, sources: [S.GOOGLE] }));
+  [50, 300, 1000].forEach(radius => tries.push({ ...base, radius, source: google.maps.StreetViewSource.OUTDOOR }));
+  for (const req of tries) {
+    try {
+      const { data } = await svService.getPanorama(req);
+      const ll = data.location.latLng;
+      // まれに検索半径より遠いパノラマが返ることがあるので距離を確認する
+      if (distM(state.lat, state.lng, ll.lat(), ll.lng()) > req.radius * 1.5) continue;
+      const pov = keepPov && PV.getVisible() ? PV.getPov() : { heading: sunHeading(), pitch: 8 };
+      svPending = { pov, zoom: keepPov ? null : 1 };
+      PV.setPano(data.location.pano);
+      PV.setPov(pov);
+      PV.setVisible(true);
+      return;
+    } catch (e) { /* 次の条件で探す */ }
+  }
+  toast('この地点の近くにストリートビューが見つかりません');
+}
+function sunHeading() { return (current().azimuth + svOffset + 360) % 360; }
+
+function setViewMode(m) {
+  if (m !== 'map' && (!PV || !PV.getVisible())) { openSvAtPoint(); return; }
+  if (m === 'split' && isNarrow()) m = 'sv';
+  viewMode = m;
+  const c = $('mapContainer');
+  c.classList.remove('mode-map', 'mode-split', 'mode-sv'); c.classList.add('mode-' + m);
+  document.querySelectorAll('#viewMode button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  $('svOpen').textContent = PV && PV.getVisible() ? 'ストリートビューを閉じる' : '観測地点のストリートビューを開く';
+  requestAnimationFrame(() => {
+    if (PV) google.maps.event.trigger(PV, 'resize');
+    if (M) M.resize();
+    scheduleDraw(); scheduleSvDraw();
+  });
+}
+
+function renderSvCard() {
+  if (!PV) return;
+  const now = current();
+  $('svAz').textContent = `${now.azimuth.toFixed(0)}° ${dirName(now.azimuth)}`;
+  $('svAlt').textContent = `${now.altitude.toFixed(0)}°`;
+  const pov = PV.getPov();
+  const trueH = ((pov.heading - svOffset) % 360 + 360) % 360;
+  let d = '';
+  if (svInfo.date) { const [y, m] = svInfo.date.split('-'); d = `撮影 ${y}年${m ? +m + '月' : ''}　`; }
+  $('svMeta').textContent = `${svInfo.user ? '投稿写真（方位がずれやすい）　' : ''}${d}視線 ${trueH.toFixed(0)}°（${dirName(trueH)}）　見上げ ${pov.pitch.toFixed(0)}°`;
+}
+
+let svQueued = false;
+function scheduleSvDraw() {
+  if (svQueued) return; svQueued = true;
+  requestAnimationFrame(() => { svQueued = false; drawSv(); });
+}
+
+function drawSv() {
+  const svg = $('svOverlay');
+  if (!PV || !PV.getVisible() || viewMode === 'map') { svg.innerHTML = ''; return; }
+  renderSvCard();
+  const pane = $('svPane'), W = pane.clientWidth, H = pane.clientHeight;
+  if (!W || !H) return;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const pov = PV.getPov(), fov = svFov(PV.getZoom() || 1);
+  const F = (Math.max(W, H) / 2) / Math.tan(fov / 2 * RAD);
+  const h = pov.heading * RAD, pt = pov.pitch * RAD;
+  const fwd = [Math.cos(pt) * Math.sin(h), Math.cos(pt) * Math.cos(h), Math.sin(pt)];
+  const right = [Math.cos(h), -Math.sin(h), 0];
+  const up = [-Math.sin(pt) * Math.sin(h), -Math.sin(pt) * Math.cos(h), Math.cos(pt)];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  // 真方位 az・高度 alt → 画面座標（後ろ側なら null）
+  const proj = (az, alt) => {
+    const A = (az + svOffset) * RAD, E = alt * RAD;
+    const d = [Math.cos(E) * Math.sin(A), Math.cos(E) * Math.cos(A), Math.sin(E)];
+    const z = dot(d, fwd);
+    if (z < 0.05) return null;
+    return [W / 2 + F * dot(d, right) / z, H / 2 - F * dot(d, up) / z];
+  };
+  const f = n => n.toFixed(1);
+  const inView = q => q && q[0] > -50 && q[0] < W + 50 && q[1] > -50 && q[1] < H + 50;
+  const poly = (pts, attrs) => {
+    let out = '', seg = [];
+    const flush = () => { if (seg.length > 1) out += `<polyline points="${seg.join(' ')}" fill="none" ${attrs}/>`; seg = []; };
+    pts.forEach(q => { if (q && Math.abs(q[0]) < 4 * W && Math.abs(q[1]) < 4 * H) seg.push(f(q[0]) + ',' + f(q[1])); else flush(); });
+    flush(); return out;
+  };
+  const day = getDay(), now = current();
+  const trueHeading = pov.heading - svOffset;
+  let s = '';
+
+  // 地平線（高度0°）と方位目盛り
+  const hz = [];
+  for (let a = -100; a <= 100; a += 2) hz.push(proj(trueHeading + a, 0));
+  s += poly(hz, `stroke="rgba(0,0,0,0.45)" stroke-width="4"`);
+  s += poly(hz, `stroke="rgba(255,255,255,0.9)" stroke-width="1.5" stroke-dasharray="6 5"`);
+  const start = Math.ceil((trueHeading - 90) / 5) * 5;
+  for (let a = start; a <= trueHeading + 90; a += 5) {
+    const q = proj(a, 0); if (!inView(q)) continue;
+    const az = ((a % 360) + 360) % 360, major = az % 10 === 0;
+    s += `<line x1="${f(q[0])}" y1="${f(q[1])}" x2="${f(q[0])}" y2="${f(q[1] + (major ? 12 : 6))}" stroke="#fff" stroke-width="${major ? 2 : 1}" style="filter:drop-shadow(0 0 1px #000)"/>`;
+    if (major) {
+      const name = az % 45 === 0 ? DIR16[az / 22.5] : `${az}°`;
+      s += `<text x="${f(q[0])}" y="${f(q[1] + 26)}" text-anchor="middle" style="font-size:${az % 45 === 0 ? 13 : 11}px">${name}</text>`;
+    }
+  }
+  s += (() => { const q = proj(trueHeading + 60, 0); return inView(q) ? `<text x="${f(Math.min(W - 6, q[0]))}" y="${f(q[1] - 6)}" text-anchor="end" style="font-size:10px;font-weight:600">地平線（高度0°）</text>` : ''; })();
+
+  // 日の出・日の入りの位置
+  [[day.rise, day.ev.sunrise, '日の出'], [day.set, day.ev.sunset, '日の入り']].forEach(([pos, ms, name]) => {
+    if (!pos) return;
+    const q = proj(pos.azimuth, 0); if (!inView(q)) return;
+    s += `<line x1="${f(q[0])}" y1="${f(q[1] - 10)}" x2="${f(q[0])}" y2="${f(q[1] + 34)}" stroke="#ff6b8a" stroke-width="2"/>`;
+    s += `<text x="${f(q[0])}" y="${f(q[1] + 48)}" text-anchor="middle" style="fill:#ffd1db">${name} ${msToLocalHM(ms)}</text>`;
+  });
+
+  // 太陽の通り道と1時間ごとの点
+  const path = day.path.map(q => q.altitude > -1 ? proj(q.azimuth, q.altitude) : null);
+  s += poly(path, `stroke="rgba(0,0,0,0.4)" stroke-width="7" stroke-linejoin="round"`);
+  s += poly(path, `stroke="#FFBA20" stroke-width="3" stroke-linejoin="round"`);
+  day.hours.forEach(hp => {
+    if (hp.altitude <= -1) return;
+    const q = proj(hp.azimuth, hp.altitude); if (!inView(q)) return;
+    s += `<circle cx="${f(q[0])}" cy="${f(q[1])}" r="4.5" fill="#064583" stroke="#fff" stroke-width="2"/>`;
+    s += `<text x="${f(q[0])}" y="${f(q[1] - 10)}" text-anchor="middle">${hp.h}時</text>`;
+  });
+
+  // 指定時刻の太陽
+  const q = now.altitude > -1 ? proj(now.azimuth, now.altitude) : null;
+  if (q && q[0] > 0 && q[0] < W && q[1] > 0 && q[1] < H) {
+    const vert = [];
+    for (let k = 0; k <= 12; k++) vert.push(proj(now.azimuth, now.altitude * k / 12));
+    s += poly(vert, `stroke="rgba(255,255,255,0.75)" stroke-width="1.5" stroke-dasharray="3 4"`);
+    for (let k = 0; k < 12; k++) {
+      const a = k * 30 * RAD;
+      s += `<line x1="${f(q[0] + 19 * Math.cos(a))}" y1="${f(q[1] + 19 * Math.sin(a))}" x2="${f(q[0] + 27 * Math.cos(a))}" y2="${f(q[1] + 27 * Math.sin(a))}" stroke="#FFBA20" stroke-width="3" stroke-linecap="round" style="filter:drop-shadow(0 0 1px #000)"/>`;
+    }
+    s += `<circle cx="${f(q[0])}" cy="${f(q[1])}" r="14" fill="rgba(255,186,32,0.35)" stroke="#FFBA20" stroke-width="3" style="filter:drop-shadow(0 0 2px #000)"/>`;
+    s += `<text x="${f(q[0] + 32)}" y="${f(q[1] + 4)}">${minToHM(state.minutes)}　高度 ${now.altitude.toFixed(1)}°</text>`;
+  } else {
+    // 画面外: 端に矢印
+    let diff = ((now.azimuth - trueHeading) % 360 + 540) % 360 - 180;
+    const label = now.altitude < -0.833 ? '太陽（地平線の下）' : '太陽';
+    if (q && Math.abs(diff) < 60) {
+      const above = q[1] < 0;
+      const x = Math.max(60, Math.min(W - 60, q[0])), y = above ? 22 : H - 22;
+      s += `<text x="${f(x)}" y="${f(y + (above ? 4 : 0))}" text-anchor="middle" style="font-size:13px;fill:#FFBA20">${above ? '▲' : '▼'} ${label}</text>`;
+    } else {
+      const left = diff < 0, x = left ? 14 : W - 14;
+      s += `<text x="${x}" y="${f(H / 2)}" text-anchor="${left ? 'start' : 'end'}" style="font-size:13px;fill:#FFBA20">${left ? '◀ ' + label : label + ' ▶'}</text>`;
+    }
+  }
+  svg.innerHTML = s;
+}
+
+$('viewMode').addEventListener('click', e => { const b = e.target.closest('button[data-mode]'); if (b) setViewMode(b.dataset.mode); });
+$('svOpen').disabled = true;
+$('svOpen').onclick = () => { if (PV && PV.getVisible()) PV.setVisible(false); else openSvAtPoint(); };
+$('svClose').onclick = () => PV && PV.setVisible(false);
+$('svFaceSun').onclick = () => {
+  if (!PV) return;
+  const now = current();
+  PV.setPov({ heading: sunHeading(), pitch: Math.max(-10, Math.min(60, now.altitude)) });
+};
+function setSvOffset(v) {
+  svOffset = Math.round(v * 2) / 2;
+  $('svOffset').value = svOffset;
+  $('svOffsetVal').textContent = (svOffset > 0 ? '+' : '') + svOffset.toFixed(1) + '°';
+  scheduleSvDraw(); saveHash();
+}
+$('svOffset').addEventListener('input', e => setSvOffset(+e.target.value));
+$('svOffsetReset').onclick = () => setSvOffset(0);
+setSvOffset(svOffset);
+
+// ============================================================
+// 地点検索（住所・施設名・緯度経度）
+//   Google Maps 表示中: Google の場所検索（Places API New の候補表示）
+//   それ以外・Googleで候補が出ないとき: 国土地理院の住所検索
+// 選んだ場所を観測地点にして地図を移動する。
+// ============================================================
+const Search = (() => {
+  const input = $('searchInput'), list = $('searchResults'), box = $('searchBox');
+  let places = null, googleUsable = true, token = null;
+  let items = [], active = -1, seq = 0, timer = null, lastQuery = '';
+
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // 全角数字・記号を半角に（座標の入力用）
+  const toHalf = s => s.replace(/[０-９．，－]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+
+  function coordItem(q) {
+    const m = toHalf(q).match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,、\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+    if (!m) return null;
+    const lat = +m[1], lng = +m[2];
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+    return { kind: 'coord', main: `緯度 ${lat}, 経度 ${lng}`, sub: '座標の地点', lat, lng };
+  }
+
+  async function googlePlaces() {
+    if (!googleUsable || !M || M.kind !== 'google') return null;
+    if (!places) {
+      try { places = await google.maps.importLibrary('places'); }
+      catch (e) { googleUsable = false; return null; }
+    }
+    return places;
+  }
+
+  async function fromGoogle(q) {
+    const P = await googlePlaces(); if (!P) return null;
+    if (!token) token = new P.AutocompleteSessionToken();
+    try {
+      const { suggestions } = await P.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+        input: q, sessionToken: token, language: 'ja', region: 'jp',
+        locationBias: { center: { lat: state.lat, lng: state.lng }, radius: 50000 },
+      });
+      return suggestions.filter(s => s.placePrediction).slice(0, 6).map(s => {
+        const p = s.placePrediction;
+        return { kind: 'google', main: p.mainText ? p.mainText.text : p.text.text, sub: p.secondaryText ? p.secondaryText.text : '', pred: p };
+      });
+    } catch (e) {
+      console.warn('Google 場所検索が使えません:', e);
+      if (/denied|not authorized|not activated|PERMISSION|API_KEY|billing/i.test(e.message || '')) googleUsable = false;
+      return null;
+    }
+  }
+
+  async function fromGsi(q) {
+    try {
+      const res = await fetch('https://msearch.gsi.go.jp/address-search/AddressSearch?q=' + encodeURIComponent(q));
+      const data = await res.json();
+      const seen = new Set();
+      return data.filter(d => d.geometry && d.geometry.coordinates).map(d => ({
+        kind: 'gsi', main: d.properties.title, sub: '国土地理院 住所検索',
+        lng: d.geometry.coordinates[0], lat: d.geometry.coordinates[1],
+      })).filter(it => !seen.has(it.main) && seen.add(it.main)).slice(0, 8);
+    } catch (e) { return []; }
+  }
+
+  async function suggest(q) {
+    const my = ++seq;
+    const out = [];
+    const c = coordItem(q); if (c) out.push(c);
+    let src = '';
+    if (!c) {
+      const g = await fromGoogle(q);
+      if (g && g.length) { out.push(...g); src = 'google'; }
+      else { out.push(...await fromGsi(q)); src = 'gsi'; }
+    }
+    if (my !== seq) return null;   // 古い問い合わせの結果は捨てる
+    items = out; active = out.length ? 0 : -1;
+    renderList(q, src);
+    return out;
+  }
+
+  function renderList(q, src) {
+    if (!items.length) {
+      list.innerHTML = q ? '<li class="empty">見つかりませんでした</li>' : '';
+    } else {
+      list.innerHTML = items.map((it, i) =>
+        `<li role="option" data-i="${i}" class="${i === active ? 'on' : ''}">` +
+        `<span class="ic">${it.kind === 'coord' ? '⌖' : it.kind === 'gsi' ? '〒' : '●'}</span>` +
+        `<span class="tx"><b>${esc(it.main)}</b>${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span></li>`
+      ).join('') + (src === 'google' ? '<li class="src">候補: Google</li>' : src === 'gsi' ? '<li class="src">候補: 国土地理院</li>' : '');
+    }
+    box.classList.toggle('open', !!list.innerHTML);
+  }
+  function highlight(i) {
+    active = i;
+    list.querySelectorAll('li[data-i]').forEach(li => li.classList.toggle('on', +li.dataset.i === i));
+  }
+  function close() { box.classList.remove('open'); }
+
+  async function choose(it) {
+    close();
+    if (!it) return;
+    try {
+      if (it.kind === 'google') {
+        const pl = it.pred.toPlace();
+        await pl.fetchFields({ fields: ['displayName', 'formattedAddress', 'location', 'viewport'] });
+        token = null;   // 場所を確定したら検索セッションを終える
+        go(pl.location.lat(), pl.location.lng(), pl.displayName || it.main, pl.viewport ? pl.viewport.toJSON() : null);
+      } else {
+        go(it.lat, it.lng, it.kind === 'coord' ? null : it.main, null);
+      }
+    } catch (e) {
+      console.warn(e); toast('場所の情報を取得できませんでした');
+    }
+  }
+
+  function go(lat, lng, name, viewport) {
+    setPoint(lat, lng, name || null);
+    if (M) M.fit(lat, lng, viewport);
+    input.value = name || '';
+    syncClear();
+    input.blur();
+    toast(name ? `「${name}」を観測地点にしました` : '観測地点を移動しました');
+  }
+
+  async function submit() {
+    const q = input.value.trim(); if (!q) return;
+    clearTimeout(timer);
+    let res = (q === lastQuery && items.length) ? items : await suggest(q);
+    lastQuery = q;
+    if (res === null) return;
+    if (!res.length) { toast('見つかりませんでした'); return; }
+    choose(res[active >= 0 ? active : 0]);
+  }
+
+  function syncClear() { box.classList.toggle('has-text', !!input.value); }
+
+  input.addEventListener('input', () => {
+    syncClear();
+    const q = input.value.trim();
+    clearTimeout(timer);
+    if (!q) { items = []; seq++; renderList('', ''); return; }
+    timer = setTimeout(() => { lastQuery = q; suggest(q); }, 250);
+  });
+  input.addEventListener('keydown', e => {
+    if (e.isComposing || e.keyCode === 229) return;   // 日本語変換中の Enter は無視
+    if (e.key === 'ArrowDown' && items.length) { e.preventDefault(); highlight((active + 1) % items.length); }
+    else if (e.key === 'ArrowUp' && items.length) { e.preventDefault(); highlight((active - 1 + items.length) % items.length); }
+    else if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    else if (e.key === 'Escape') { close(); input.blur(); }
+  });
+  input.addEventListener('focus', () => { if (items.length && input.value.trim()) box.classList.add('open'); input.select(); });
+  list.addEventListener('mousedown', e => e.preventDefault());   // クリックで入力欄のフォーカスが外れないように
+  list.addEventListener('click', e => { const li = e.target.closest('li[data-i]'); if (li) choose(items[+li.dataset.i]); });
+  list.addEventListener('mousemove', e => { const li = e.target.closest('li[data-i]'); if (li && +li.dataset.i !== active) highlight(+li.dataset.i); });
+  $('searchClear').addEventListener('click', () => { input.value = ''; items = []; seq++; renderList('', ''); syncClear(); input.focus(); });
+  document.addEventListener('pointerdown', e => { if (!box.contains(e.target)) close(); });
+
+  if (state.place) input.value = state.place;
+  syncClear();
+  return { suggest, submit };
+})();
+
+// ============================================================
+// トースト
+// ============================================================
+let toastTimer = null; const shownOnce = new Set();
+function toast(msg, ms = 2500) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+}
+function toastOnce(msg) { if (shownOnce.has(msg)) return; shownOnce.add(msg); toast(msg, 3500); }
+
+// ============================================================
+// 起動
+// ============================================================
+new ResizeObserver(() => { if (M) M.resize(); scheduleDraw(); scheduleSvDraw(); }).observe($('mapContainer'));
+render();
+const key = getApiKey();
+if (key && location.protocol !== 'file:') loadGoogleMaps(key);
+else fallbackToLeaflet(key ? 'ローカルファイルではGoogle Mapsが使えないため、地理院地図で表示しています' : null);
+</script>
+</body>
+</html>
